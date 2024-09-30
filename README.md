@@ -24,6 +24,6 @@ This repository implements an educational project for the Bayesian Multimodeling
 В этом репозитории реализован учебный проект для курса Байесовское мультимоделирование. В нем реализуются алгоритмы сэмплирования из различных распределений, используя implicit reparametriation trick.
 
 ## Links
-- [LinkReview](https://github.com/intsystems/Prompting-model-for-LLM/blob/main/linkreview.md)
+- [LinkReview](https://github.com/intsystems/implitic-reparametrization-trick/blob/main/linkreview.md)
 
 
