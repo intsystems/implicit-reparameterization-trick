@@ -1,6 +1,6 @@
 # LinkReview
 
-- Here we have collect info about all the works that may be useful for writing our paper
+- Here we have collect info about all the works that may be useful for our project.
 
 > [!NOTE]
 > This review table will be updated, so it is not a final version
