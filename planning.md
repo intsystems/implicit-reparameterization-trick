@@ -12,7 +12,9 @@ We plan to implement the following distributions in our library:
 - Sampling from an arbitrary factorized distribution (***)
 
 (\*) - this distribution is already implemented in torch using the explicit reparameterization trick, we will implement it for comparison
+
 (\*\*) - this distribution is added as a backup, their inclusion is questionable
+
 (\*\*\*) - this distribution is not very clear in implementation, its inclusion is questionable
 
 ## Stack
