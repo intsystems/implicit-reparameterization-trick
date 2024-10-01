@@ -6,9 +6,9 @@ The outcome of our __Implicit Reparametrization Trick__ project is an extension 
 ## Scope
 We plan to implement the following distributions in our library:
 - Gaussian normal distribution (*)
-- Dirichlet distribution (Beta distributions)
+- Dirichlet distribution (Beta distributions)(\*)
 - Sampling from a mixture of distributions
-- Sampling from the Student's t-distribution (**)
+- Sampling from the Student's t-distribution (**) (\*)
 - Sampling from an arbitrary factorized distribution (***)
 
 (\*) - this distribution is already implemented in torch using the explicit reparameterization trick, we will implement it for comparison
