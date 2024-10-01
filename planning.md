@@ -21,7 +21,7 @@ We plan to inherit from the torch.distribution.Distribution class, so we need to
 
 ![stack](./images/stack.png)
 
-On this diagram, the elements marked in black already exist. The elements marked in <span style="color:blue">green</span> are planned to be implemented. The elements marked in blue are ones whose implementation is uncertain.
+On this diagram, the elements marked in black already exist. The elements marked in <code style="color : name_color">text</code> are planned to be implemented. The elements marked in blue are ones whose implementation is uncertain.
 
 ## Scheme of classes and examples
 
