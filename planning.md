@@ -16,9 +16,12 @@ We plan to implement the following distributions in our library:
 (\*\*\*) - this distribution is not very clear in implementation, its inclusion is questionable
 
 ## Stack
+
+We plan to inherit from the torch.distribution.Distribution class, so we need to implement all the methods that are present in that class.
+
 ![stack](./images/stack.png)
 
-
+On this diagram, the elements marked in black already exist. The elements marked in green are planned to be implemented. The elements marked in blue are ones whose implementation is uncertain.
 
 ## Scheme of classes and examples
 
@@ -27,6 +30,8 @@ Thus, the scope of the library is to implement following classes:
 class torch.distributions.implicit.normal
 class torch.distributions.implicit.normal
 ```
+
+
 
 ## Plan of implementation
 
