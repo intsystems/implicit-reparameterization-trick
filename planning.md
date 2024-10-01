@@ -31,7 +31,8 @@ In this section, we present the implementation scheme of the library, showing th
 ```
 class torch.distributions.Distribution:
 	'''
-	The abstract base class for probability distributions, which we inherit from. These methods are implied to be implemented for each subclass.
+	The abstract base class for probability distributions, which we inherit from. These methods are implied
+	to be implemented for each subclass.
 	'''
 	def __init__(batch_shape=torch.Size([]), event_shape=torch.Size([])):
 		'''
@@ -41,7 +42,9 @@ class torch.distributions.Distribution:
 	@property
 	def arg_constraints():
 		'''
-		Returns a dictionary from argument names to Constraint objects that should 		be satisfied by each argument of this distribution. Args that are not tensors need not appear in this dict.
+		Returns a dictionary from argument names to Constraint objects that should
+		be satisfied by each argument of this distribution. Args that are not tensors need not appear
+		in this dict.
 		'''
 	
 	def cdf(value):
@@ -56,7 +59,9 @@ class torch.distributions.Distribution:
 
 	def enumerate_support(expand=True):
 		'''
-		Returns tensor containing all values supported by a discrete distribution. The result will enumerate over dimension 0, so the shape of the result will be (cardinality,) + batch_shape + event_shape (where event_shape = () for univariate distributions).
+		Returns tensor containing all values supported by a discrete distribution. The result will
+		enumerate over dimension 0, so the shape of the result will be (cardinality,) + batch_shape
+		+ event_shape (where event_shape = () for univariate distributions).
 		'''
 	
 	@property
@@ -77,12 +82,14 @@ class torch.distributions.Distribution:
 	
 	def rsample(sample_shape=torch.Size([])):
 		'''
-		Generates a sample_shape shaped sample or sample_shape shaped batch of samples if the distribution parameters are batched.
+		Generates a sample_shape shaped sample or sample_shape shaped batch of samples if the distribution
+		parameters are batched.
 		'''
 
 	def sample(sample_shape=torch.Size([])):
 		'''
-		Generates a sample_shape shaped sample or sample_shape shaped batch of reparameterized samples if the distribution parameters are batched.
+		Generates a sample_shape shaped sample or sample_shape shaped batch of reparameterized samples
+		if the distribution parameters are batched.
 		'''
 
 class torch.distributions.implicit.Normal(Distribution):
@@ -115,7 +122,8 @@ class torch.distributions.implicit.student(Distribution):
 
 class torch.distributions.implicit.factorized(Distribution):
 	'''
-	A class for an arbitrary factorized distribution with backpropagation capability for the rsample function through IRT.
+	A class for an arbitrary factorized distribution with backpropagation capability for the rsample
+	function through IRT.
 	'''
 ```
 ####  Usage
