@@ -16,7 +16,7 @@ We plan to implement the following distributions in our library:
 (\*\*\*) - this distribution is not very clear in implementation, its inclusion is questionable
 
 ## Stack
-![stack](./images/stack)
+![stack](./stack)
 
 
 
