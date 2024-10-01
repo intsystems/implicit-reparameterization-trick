@@ -146,12 +146,18 @@ In this example, we demonstrate the use of a mixture of distributions using our 
 
 ## Plan of implementation
 
-1) Construct a basic example of a Normal class with an rsample method that supports backpropagation.
-2) Test usability of the library in VAE on MNIST.
-3) Compare results with explicit reparametrization trick.
-4) Expand the class Normal and prepare distributions Dirichlet and Mixture.
-5) Try to implement class Factorized.
-6) Implement class Student's in case of failure.
-7) Write unit tests for different distribution, try to cover all cases.
-8) Expand documentation for our code.
-9) Prepare a blog-post.
+| Task | Deadline | Assignee |
+| ---- | ---- |  ---- |
+| Construct a basic example of a Normal class with an rsample method that supports backpropagation. | 22.10 | Zabarianska |
+| Test usability of the library in VAE on MNIST. | 22.10 | - |
+| Compare results with explicit reparametrization trick. | 22.10 | - |
+| Prepare a draft of documentation. | 28.10 | Nikitina |
+| Prepare a draft of blogpost. | 28.10 | Kreinin |
+| Expand the class Normal and prepare distributions Dirichlet and Mixture. | 12.11 | Zabarianska, Kreinin, Nikitina |
+| Try to implement class Factorized. | 12.11 | Babkin |
+| Implement class Student's in case of failure. | 12.11 | Babkin |
+| Wrap project into a library. | 12.11 | Nikitina |
+| Write unit tests for different distribution, try to cover all cases. | 12.11 | Kreinin |
+| Prepare a demo. | 19.11 | Babkin |
+| Expand documentation for our code. | 19.11 | Nikitina |
+| Prepare a blog-post. | 19.11 | Kreinin | 
