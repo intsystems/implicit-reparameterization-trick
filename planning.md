@@ -113,14 +113,14 @@ class torch.distributions.implicit.Mixture(Distribution):
 	def __init__(distributions : List[Distribution]):
 		pass
 
-class torch.distributions.implicit.student(Distribution):
+class torch.distributions.implicit.Student(Distribution):
 	'''
 	A Student's distribution class with backpropagation capability for the rsample function through IRT.
 	'''
 	def __init__():
 		pass
 
-class torch.distributions.implicit.factorized(Distribution):
+class torch.distributions.implicit.Factorized(Distribution):
 	'''
 	A class for an arbitrary factorized distribution with backpropagation capability for the rsample
 	function through IRT.
@@ -144,7 +144,14 @@ In this example, we demonstrate the use of a mixture of distributions using our 
 >>> outputs = Decoder(deviated)
 ```
 
-
-
 ## Plan of implementation
 
+1) Construct a basic example of a Normal class with an rsample method that supports backpropagation.
+2) Test usability of the library in VAE on MNIST.
+3) Compare results with explicit reparametrization trick.
+4) Expand the class Normal and prepare distributions Dirichlet and Mixture.
+5) Try to implement class Factorized.
+6) Implement class Student's in case of failure.
+7) Write unit tests for different distribution, try to cover all cases.
+8) Expand documentation for our code.
+9) Prepare a blog-post.
