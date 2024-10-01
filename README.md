@@ -1,4 +1,4 @@
-# Implitic Reparametrization Trick
+# Implicit Reparametrization Trick
 
 <table>
     <tr>
