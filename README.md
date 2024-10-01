@@ -25,5 +25,6 @@ This repository implements an educational project for the Bayesian Multimodeling
 
 ## Links
 - [LinkReview](https://github.com/intsystems/implitic-reparametrization-trick/blob/main/linkreview.md)
+- [Plan of project](https://github.com/intsystems/implitic-reparametrization-trick/blob/main/planning.md)
 
 
