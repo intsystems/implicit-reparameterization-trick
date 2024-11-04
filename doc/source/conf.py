@@ -15,7 +15,7 @@ import sys
 
 sys.path.insert(0, os.path.abspath('../../src/'))
 
-from mylib import __version__
+from irt import __version__
 
 
 # -- Project information -----------------------------------------------------
