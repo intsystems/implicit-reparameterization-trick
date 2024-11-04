@@ -22,4 +22,4 @@ Uninstall
 ---------
 .. code-block:: bash
 
-  python3 -m pip uninstall irt
+	python3 -m pip uninstall irt
