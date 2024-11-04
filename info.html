@@ -4,7 +4,7 @@
   <meta charset="utf-8" /><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>&lt;no title&gt; &mdash; Implicit Reparametrization Trick  documentation</title>
+  <title>Implicit Reparametrization Trick &mdash; Implicit Reparametrization Trick  documentation</title>
       <link rel="stylesheet" type="text/css" href="_static/pygments.css" />
       <link rel="stylesheet" type="text/css" href="_static/css/theme.css" />
       <link rel="stylesheet" type="text/css" href="_static/graphviz.css" />
@@ -49,7 +49,16 @@
   </form>
 </div>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
-              <p class="caption" role="heading"><span class="caption-text">Packages:</span></p>
+              <p class="caption" role="heading"><span class="caption-text">Main Info:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Implicit Reparametrization Trick</a></li>
+<li class="toctree-l1"><a class="reference internal" href="#description">Description</a></li>
+<li class="toctree-l1"><a class="reference internal" href="#scope">Scope</a></li>
+<li class="toctree-l1"><a class="reference internal" href="#stack">Stack</a></li>
+<li class="toctree-l1"><a class="reference internal" href="#usage">Usage</a></li>
+<li class="toctree-l1"><a class="reference internal" href="#links">Links</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Packages:</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="distributions.html">Distributions</a></li>
 </ul>
@@ -68,7 +77,7 @@
           <div role="navigation" aria-label="Page navigation">
   <ul class="wy-breadcrumbs">
       <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
-      <li class="breadcrumb-item active">&lt;no title&gt;</li>
+      <li class="breadcrumb-item active">Implicit Reparametrization Trick</li>
       <li class="wy-breadcrumbs-aside">
               <a href="https://github.com/Intelligent-Systems-Phystech/ProjectTemplate/blob/master/doc/source/info.rst" class="fa fa-github"> Edit on GitHub</a>
       </li>
@@ -78,63 +87,55 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
              
-  <p># Implicit Reparametrization Trick</p>
-<dl>
-<dt>&lt;table&gt;</dt><dd><dl class="simple">
-<dt>&lt;tr&gt;</dt><dd><p>&lt;td align=”left”&gt; &lt;b&gt; Title &lt;/b&gt; &lt;/td&gt;
-&lt;td&gt; Implicit Reparametrization Trick for BMM &lt;/td&gt;</p>
-</dd>
-</dl>
-<p>&lt;/tr&gt;
-&lt;tr&gt;</p>
-<blockquote>
-<div><p>&lt;td align=”left”&gt; &lt;b&gt; Authors &lt;/b&gt; &lt;/td&gt;
-&lt;td&gt; Matvei Kreinin, Maria Nikitina, Petr Babkin, Irina Zaboryanskaya &lt;/td&gt;</p>
-</div></blockquote>
-<p>&lt;/tr&gt;
-&lt;tr&gt;</p>
-<blockquote>
-<div><p>&lt;td align=”left”&gt; &lt;b&gt; Consultant &lt;/b&gt; &lt;/td&gt;
-&lt;td&gt; Oleg Bakhteev, PhD &lt;/td&gt;</p>
-</div></blockquote>
-<p>&lt;/tr&gt;</p>
-</dd>
-</dl>
-<p>&lt;/table&gt;</p>
-<p>## Description</p>
+  <section id="implicit-reparametrization-trick">
+<h1>Implicit Reparametrization Trick<a class="headerlink" href="#implicit-reparametrization-trick" title="Permalink to this heading"></a></h1>
+<p><a class="reference external" href="https://github.com/intsystems/ProjectTemplate/tree/master"><img alt="Test status" src="https://github.com/intsystems/ProjectTemplate/workflows/test/badge.svg" /></a> <a class="reference external" href="https://app.codecov.io/gh/intsystems/ProjectTemplate"><img alt="Test coverage" src="https://img.shields.io/codecov/c/github/intsystems/ProjectTemplate/master" /></a> <a class="reference external" href="https://intsystems.github.io/implicit-reparameterization-trick/"><img alt="Docs status" src="https://github.com/intsystems/ProjectTemplate/workflows/docs/badge.svg" /></a></p>
+</section>
+<section id="description">
+<h1>Description<a class="headerlink" href="#description" title="Permalink to this heading"></a></h1>
 <p>This repository implements an educational project for the Bayesian Multimodeling course. It implements algorithms for sampling from various distributions, using the implicit reparameterization trick.</p>
-<p>## Scope
-We plan to implement the following distributions in our library:
-- Gaussian normal distribution (*)
-- Dirichlet distribution (Beta distributions)(*)
-- Sampling from a mixture of distributions
-- Sampling from the Student’s t-distribution (**) (*)
-- Sampling from an arbitrary factorized distribution (<a href="#id1"><span class="problematic" id="id2">**</span></a><a href="#id3"><span class="problematic" id="id4">*</span></a>)</p>
-<p>(*) - this distribution is already implemented in torch using the explicit reparameterization trick, we will implement it for comparison</p>
-<p>(**) - this distribution is added as a backup, their inclusion is questionable</p>
-<p>(***) - this distribution is not very clear in implementation, its inclusion is questionable</p>
-<p>## Stack</p>
+</section>
+<section id="scope">
+<h1>Scope<a class="headerlink" href="#scope" title="Permalink to this heading"></a></h1>
+<p>We plan to implement the following distributions in our library:</p>
+<ul class="simple">
+<li><p><cite>Gaussian normal distribution</cite></p></li>
+<li><p><cite>Dirichlet distribution (Beta distributions)</cite></p></li>
+<li><p><cite>Sampling from a mixture of distributions</cite></p></li>
+<li><p><cite>Sampling from the Student’s t-distribution</cite></p></li>
+<li><p><cite>Sampling from an arbitrary factorized distribution</cite></p></li>
+</ul>
+</section>
+<section id="stack">
+<h1>Stack<a class="headerlink" href="#stack" title="Permalink to this heading"></a></h1>
 <p>We plan to inherit from the torch.distribution.Distribution class, so we need to implement all the methods that are present in that class.</p>
-<p>##  Usage
-In this example, we demonstrate the application of our library using a Variational Autoencoder (VAE) model, where the latent layer is modified by a normal distribution.
-<code class="docutils literal notranslate"><span class="pre">`</span>
-<span class="pre">&gt;&gt;&gt;</span> <span class="pre">import</span> <span class="pre">torch.distributions.implicit</span> <span class="pre">as</span> <span class="pre">irt</span>
-<span class="pre">&gt;&gt;&gt;</span> <span class="pre">params</span> <span class="pre">=</span> <span class="pre">Encoder(inputs)</span>
-<span class="pre">&gt;&gt;&gt;</span> <span class="pre">gauss</span> <span class="pre">=</span> <span class="pre">irt.Normal(*params)</span>
-<span class="pre">&gt;&gt;&gt;</span> <span class="pre">deviated</span> <span class="pre">=</span> <span class="pre">gauss.rsample()</span>
-<span class="pre">&gt;&gt;&gt;</span> <span class="pre">outputs</span> <span class="pre">=</span> <span class="pre">Decoder(deviated)</span>
-<span class="pre">`</span></code>
-In this example, we demonstrate the use of a mixture of distributions using our library.
-<code class="docutils literal notranslate"><span class="pre">`</span>
-<span class="pre">&gt;&gt;&gt;</span> <span class="pre">import</span> <span class="pre">irt</span>
-<span class="pre">&gt;&gt;&gt;</span> <span class="pre">params</span> <span class="pre">=</span> <span class="pre">Encoder(inputs)</span>
-<span class="pre">&gt;&gt;&gt;</span> <span class="pre">mix</span> <span class="pre">=</span> <span class="pre">irt.Mixture([irt.Normal(*params),</span> <span class="pre">irt.Dirichlet(*params)])</span>
-<span class="pre">&gt;&gt;&gt;</span> <span class="pre">deviated</span> <span class="pre">=</span> <span class="pre">mix.rsample()</span>
-<span class="pre">&gt;&gt;&gt;</span> <span class="pre">outputs</span> <span class="pre">=</span> <span class="pre">Decoder(deviated)</span>
-<span class="pre">`</span></code></p>
-<p>## Links
-- [LinkReview](<a class="reference external" href="https://github.com/intsystems/implitic-reparametrization-trick/blob/main/linkreview.md">https://github.com/intsystems/implitic-reparametrization-trick/blob/main/linkreview.md</a>)
-- [Plan of project](<a class="reference external" href="https://github.com/intsystems/implitic-reparametrization-trick/blob/main/planning.md">https://github.com/intsystems/implitic-reparametrization-trick/blob/main/planning.md</a>)</p>
+</section>
+<section id="usage">
+<h1>Usage<a class="headerlink" href="#usage" title="Permalink to this heading"></a></h1>
+<p>In this example, we demonstrate the application of our library using a Variational Autoencoder (VAE) model, where the latent layer is modified by a normal distribution.:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">torch.distributions.implicit</span> <span class="k">as</span> <span class="nn">irt</span>
+<span class="n">params</span> <span class="o">=</span> <span class="n">Encoder</span><span class="p">(</span><span class="n">inputs</span><span class="p">)</span>
+<span class="n">gauss</span> <span class="o">=</span> <span class="n">irt</span><span class="o">.</span><span class="n">Normal</span><span class="p">(</span><span class="o">*</span><span class="n">params</span><span class="p">)</span>
+<span class="n">deviated</span> <span class="o">=</span> <span class="n">gauss</span><span class="o">.</span><span class="n">rsample</span><span class="p">()</span>
+<span class="n">outputs</span> <span class="o">=</span> <span class="n">Decoder</span><span class="p">(</span><span class="n">deviated</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>In this example, we demonstrate the use of a mixture of distributions using our library.:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">irt</span>
+<span class="n">params</span> <span class="o">=</span> <span class="n">Encoder</span><span class="p">(</span><span class="n">inputs</span><span class="p">)</span>
+<span class="n">mix</span> <span class="o">=</span> <span class="n">irt</span><span class="o">.</span><span class="n">Mixture</span><span class="p">([</span><span class="n">irt</span><span class="o">.</span><span class="n">Normal</span><span class="p">(</span><span class="o">*</span><span class="n">params</span><span class="p">),</span> <span class="n">irt</span><span class="o">.</span><span class="n">Dirichlet</span><span class="p">(</span><span class="o">*</span><span class="n">params</span><span class="p">)])</span>
+<span class="n">deviated</span> <span class="o">=</span> <span class="n">mix</span><span class="o">.</span><span class="n">rsample</span><span class="p">()</span>
+<span class="n">outputs</span> <span class="o">=</span> <span class="n">Decoder</span><span class="p">(</span><span class="n">deviated</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="links">
+<h1>Links<a class="headerlink" href="#links" title="Permalink to this heading"></a></h1>
+<ul class="simple">
+<li><p><a class="reference external" href="https://github.com/intsystems/implitic-reparametrization-trick/blob/main/linkreview.md">LinkReview</a></p></li>
+<li><p><a class="reference external" href="https://github.com/intsystems/implitic-reparametrization-trick/blob/main/planning.md">Plan of project</a></p></li>
+</ul>
+</section>
 
 
            </div>
