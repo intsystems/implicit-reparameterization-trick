@@ -1,98 +1,26 @@
 import torch
+from torch.distributions import Distribution
 
-class torch.distributions.Distribution:
-	'''
-	The abstract base class for probability distributions, which we inherit from. These methods are implied
-	to be implemented for each subclass.
-	'''
-	def __init__(batch_shape=torch.Size([]), event_shape=torch.Size([])):
-		'''
-		Basic constructer of distribution.
-		'''
-	
-	@property
-	def arg_constraints():
-		'''
-		Returns a dictionary from argument names to Constraint objects that should
-		be satisfied by each argument of this distribution. Args that are not tensors need not appear
-		in this dict.
-		'''
-	
-	def cdf(value):
-		'''
-		Returns the cumulative density/mass function evaluated at value.
-		'''
-		
-	def entropy():
-		'''
-		Returns entropy of distribution, batched over batch_shape.
-		'''
+class Normal(Distribution):
+    def __init__(self, loc, scale):
+        self.loc = loc
+        self.scale = scale
 
-	def enumerate_support(expand=True):
-		'''
-		Returns tensor containing all values supported by a discrete distribution. The result will
-		enumerate over dimension 0, so the shape of the result will be (cardinality,) + batch_shape
-		+ event_shape (where event_shape = () for univariate distributions).
-		'''
-	
-	@property
-	def mean(expand=True):
-		'''
-		Returns mean of the distributio.
-		'''
+    def transform(self, z):
+        return (z - self.loc) / self.scale
+    
+    def d_transform_d_z(self):
+        return 1 / self.scale
 
-	@property
-	def mode(expand=True):
-		'''
-		Returns mean of the distributio.
-		'''
-	def perplexity():
-		'''
-		Returns perplexity of distribution, batched over batch_shape.
-		'''
-	
-	def rsample(sample_shape=torch.Size([])):
-		'''
-		Generates a sample_shape shaped sample or sample_shape shaped batch of samples if the distribution
-		parameters are batched.
-		'''
+    def sample(self):
+        return torch.normal(self.loc, self.scale).detach()
 
-	def sample(sample_shape=torch.Size([])):
-		'''
-		Generates a sample_shape shaped sample or sample_shape shaped batch of reparameterized samples
-		if the distribution parameters are batched.
-		'''
+    def rsample(self):
+        x = self.sample()
 
-class torch.distributions.implicit.Normal(Distribution):
-	'''
-	A Gaussian distribution class with backpropagation capability for the rsample function through IRT.
-	'''
-	def __init__(mean_matrix, covariance_matrix=None):
-		pass
+        transform = self.transform(x)
 
-class torch.distributions.implicit.Dirichlet(Distribution):
-	'''
-	A Dirichlet distribution class with backpropagation capability for the rsample function through IRT.
-	'''
-	def __init__(concentration, validate_args=None):
-		pass
-		
-class torch.distributions.implicit.Mixture(Distribution):
-	'''
-	A Mixture of distributions class with backpropagation capability for the rsample function through IRT.
-	'''
-	def __init__(distributions : List[Distribution]):
-		pass
+        surrogate_x = - transform / self.d_transform_d_z().detach()
 
-class torch.distributions.implicit.Student(Distribution):
-	'''
-	A Student's distribution class with backpropagation capability for the rsample function through IRT.
-	'''
-	def __init__():
-		pass
-
-class torch.distributions.implicit.Factorized(Distribution):
-	'''
-	A class for an arbitrary factorized distribution with backpropagation capability for the rsample
-	function through IRT.
-	'''
+        # Replace gradients of x with gradients of surrogate_x, but keep the value.
+        return x + (surrogate_x - surrogate_x.detach())
