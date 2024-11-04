@@ -23,11 +23,11 @@ This repository implements an educational project for the Bayesian Multimodeling
 Scope
 ==========
 We plan to implement the following distributions in our library:
-- `Gaussian normal distribution (*)`
-- `Dirichlet distribution (Beta distributions)(*)`
-- `Sampling from a mixture of distributions`
-- `Sampling from the Student's t-distribution (**) (*)`
-- `Sampling from an arbitrary factorized distribution (***)`
+- `Gaussian normal distribution (*)`_
+- `Dirichlet distribution (Beta distributions)(*)`_
+- `Sampling from a mixture of distributions`_
+- `Sampling from the Student's t-distribution (**) (*)`_
+- `Sampling from an arbitrary factorized distribution (***)`_
 
 (*) - this distribution is already implemented in torch using the explicit reparameterization trick, we will implement it for comparison
 
