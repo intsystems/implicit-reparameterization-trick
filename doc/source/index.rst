@@ -1,13 +1,30 @@
-.. Implicit Reparametrization Trick documentation master file, created by
-   sphinx-quickstart on Mon Oct 10 10:00:00 2022.
+.. MixtureLib documentation master file, created by
+   sphinx-quickstart on Fri Mar 20 22:58:28 2020.
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to Implicit Reparametrization Trick's documentation!
-===========================================================
+Welcome to Mixture Lib!
+=======================
 
 .. toctree::
-   :maxdepth: 2
-   :caption: Contents:
+   :maxdepth: 1
+   :caption: Main Info:
+   
+   info.rst
 
-   modules
+.. toctree::
+   :maxdepth: 1
+   :caption: Get Started:
+   
+   installation.rst
+
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Packages:
+
+   train.rst
+
+
+Indices and tables
+==================
