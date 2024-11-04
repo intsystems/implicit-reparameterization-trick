@@ -1,3 +1,5 @@
+import torch
+
 class torch.distributions.Distribution:
 	'''
 	The abstract base class for probability distributions, which we inherit from. These methods are implied
