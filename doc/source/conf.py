@@ -56,7 +56,7 @@ html_context = {
     "github_user": "Intelligent-Systems-Phystech", # Username
     "github_repo": "implicit-reparametrization-trick", # Repo name
     "github_version": "main", # Version
-    "conf_py_path": "/doc/source/", # Path in the checkout to the docs root
+    "conf_py_path": "./doc/source/", # Path in the checkout to the docs root
 }
 
 
