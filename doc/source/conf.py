@@ -54,7 +54,7 @@ html_extra_path = []
 html_context = {
     "display_github": True, # Integrate GitHub
     "github_user": "Intelligent-Systems-Phystech", # Username
-    "github_repo": "ProjectTemplate", # Repo name
+    "github_repo": "implicit-reparametrization-trick", # Repo name
     "github_version": "master", # Version
     "conf_py_path": "/doc/source/", # Path in the checkout to the docs root
 }
