@@ -2,7 +2,7 @@
 Train
 *****
 
-.. automodule:: mylib.train
+.. automodule:: irt.distributions
     :members:
 
 
