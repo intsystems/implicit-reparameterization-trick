@@ -23,7 +23,7 @@ Welcome to Mixture Lib!
    :maxdepth: 1
    :caption: Packages:
 
-   train.rst
+   distributions.rst
 
 
 Indices and tables
