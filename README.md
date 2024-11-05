@@ -55,6 +55,8 @@ In this example, we demonstrate the use of a mixture of distributions using our 
 >>> outputs = Decoder(deviated)
 ```
 
+## Blog post
+
 ## Links
 - [LinkReview](https://github.com/intsystems/implitic-reparametrization-trick/blob/main/linkreview.md)
 - [Plan of project](https://github.com/intsystems/implitic-reparametrization-trick/blob/main/planning.md)
