@@ -1,0 +1,29 @@
+[flake8]
+profile = black
+count = True
+statistics = True
+extend-ignore =
+    E203,
+    F403,
+    C901,
+    N812,
+    B010,
+    ANN101,
+max-line-length = 120
+max-complexity = 15
+docstring-convention = google
+exclude =
+    .ipynb,
+    .ipynb_checkpoints,
+    .git,
+    __pycache__,
+    venv,
+    tests,
+ignore-names = 
+    X_train,
+    X_control,
+    X,
+    X_val,
+    X_valid,
+    X_test,
+inline-quotes = double
