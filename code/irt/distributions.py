@@ -1,8 +1,6 @@
 import torch
 from torch.distributions import Distribution
 
-### alternative infromation
-
 
 # Define a custom Normal distribution class that inherits from PyTorch's Distribution class
 class Normal(Distribution):
