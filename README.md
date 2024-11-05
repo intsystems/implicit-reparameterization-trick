@@ -57,6 +57,8 @@ In this example, we demonstrate the use of a mixture of distributions using our 
 
 ## Blog post
 
+(file:///C:/Users/akshi/Downloads/Implicit_reparametrization_trick.pdf) 
+
 ## Links
 - [LinkReview](https://github.com/intsystems/implitic-reparametrization-trick/blob/main/linkreview.md)
 - [Plan of project](https://github.com/intsystems/implitic-reparametrization-trick/blob/main/planning.md)
