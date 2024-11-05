@@ -60,3 +60,5 @@ Links
 
 - `LinkReview <https://github.com/intsystems/implitic-reparametrization-trick/blob/main/linkreview.md>`_
 - `Plan of project <https://github.com/intsystems/implitic-reparametrization-trick/blob/main/planning.md>`_
+- `BlogPost <Blog_post_sketch.pdf>`_
+- `Documentation <https://intsystems.github.io/implicit-reparameterization-trick/>`_
