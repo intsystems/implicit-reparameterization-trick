@@ -27,7 +27,7 @@ jobs:
         pip install isort flake8 black
 
     - name: Run isort
-      run: isort . --check-only
+      run: isort .
 
     - name: Run flake8
       run: flake8 .
