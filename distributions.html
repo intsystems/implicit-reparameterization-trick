@@ -63,7 +63,16 @@
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Packages:</span></p>
 <ul class="current">
-<li class="toctree-l1 current"><a class="current reference internal" href="#">Distributions</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Distributions</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#irt.distributions.Normal"><code class="docutils literal notranslate"><span class="pre">Normal</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#irt.distributions.Normal.d_transform_d_z"><code class="docutils literal notranslate"><span class="pre">Normal.d_transform_d_z()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#irt.distributions.Normal.rsample"><code class="docutils literal notranslate"><span class="pre">Normal.rsample()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#irt.distributions.Normal.sample"><code class="docutils literal notranslate"><span class="pre">Normal.sample()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#irt.distributions.Normal.transform"><code class="docutils literal notranslate"><span class="pre">Normal.transform()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
 </ul>
 
         </div>
@@ -92,6 +101,58 @@
              
   <section id="distributions">
 <h1>Distributions<a class="headerlink" href="#distributions" title="Permalink to this heading"></a></h1>
+<span class="target" id="module-irt.distributions"></span><dl class="py class">
+<dt class="sig sig-object py" id="irt.distributions.Normal">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">irt.distributions.</span></span><span class="sig-name descname"><span class="pre">Normal</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/irt/distributions.html#Normal"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#irt.distributions.Normal" title="Permalink to this definition"></a></dt>
+<dd><dl class="py method">
+<dt class="sig sig-object py" id="irt.distributions.Normal.d_transform_d_z">
+<span class="sig-name descname"><span class="pre">d_transform_d_z</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">torch.Tensor</span></span></span><a class="reference internal" href="_modules/irt/distributions.html#Normal.d_transform_d_z"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#irt.distributions.Normal.d_transform_d_z" title="Permalink to this definition"></a></dt>
+<dd><p>Computes the derivative of the transform function with respect to the input tensor <cite>z</cite>.</p>
+<dl class="simple">
+<dt>Returns:</dt><dd><p>Tensor: The derivative, which is the reciprocal of the scale. This is used for reparameterization.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="irt.distributions.Normal.rsample">
+<span class="sig-name descname"><span class="pre">rsample</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">torch.Tensor</span></span></span><a class="reference internal" href="_modules/irt/distributions.html#Normal.rsample"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#irt.distributions.Normal.rsample" title="Permalink to this definition"></a></dt>
+<dd><p>Generates a reparameterized sample from the Normal distribution, which is useful for gradient-based optimization.</p>
+<p>The <cite>rsample</cite> method generates a sample <cite>x</cite>, applies a transformation, and creates a surrogate sample
+that allows gradients to flow through the sampling process.</p>
+<dl class="simple">
+<dt>Returns:</dt><dd><p>Tensor: A reparameterized sample tensor, which allows gradient backpropagation.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="irt.distributions.Normal.sample">
+<span class="sig-name descname"><span class="pre">sample</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">torch.Tensor</span></span></span><a class="reference internal" href="_modules/irt/distributions.html#Normal.sample"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#irt.distributions.Normal.sample" title="Permalink to this definition"></a></dt>
+<dd><p>Generates a sample from the Normal distribution using PyTorch’s <cite>torch.normal</cite> function.</p>
+<dl class="simple">
+<dt>Returns:</dt><dd><dl class="simple">
+<dt>Tensor: A tensor containing a sample from the distribution. The <cite>detach()</cite> method is used to prevent</dt><dd><p>gradients from being tracked during sampling.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="irt.distributions.Normal.transform">
+<span class="sig-name descname"><span class="pre">transform</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">z</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">torch.Tensor</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">torch.Tensor</span></span></span><a class="reference internal" href="_modules/irt/distributions.html#Normal.transform"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#irt.distributions.Normal.transform" title="Permalink to this definition"></a></dt>
+<dd><p>Transforms the input tensor <cite>z</cite> to the standard normal form using the distribution’s mean and scale.</p>
+<dl class="simple">
+<dt>Args:</dt><dd><p>z (Tensor): Input tensor to be transformed.</p>
+</dd>
+<dt>Returns:</dt><dd><p>Tensor: The transformed tensor, which is normalized to have mean 0 and standard deviation 1.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
 </section>
 
 
