@@ -7,7 +7,7 @@
     </tr>
     <tr>
         <td align="left"> <b> Authors </b> </td>
-        <td> Matvei Kreinin, Maria Nikitina, Petr Babkin, Irina Zaboryanskaya </td>
+        <td> Matvei Kreinin, Maria Nikitina, Petr Babkin, Iryna Zabarianska </td>
     </tr>
     <tr>
         <td align="left"> <b> Consultant </b> </td>
