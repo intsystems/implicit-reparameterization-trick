@@ -89,75 +89,751 @@
            <div itemprop="articleBody">
              
   <h1>Source code for irt.distributions</h1><div class="highlight"><pre>
-<span></span><span class="kn">import</span> <span class="nn">torch</span>
-<span class="kn">from</span> <span class="nn">torch.distributions</span> <span class="kn">import</span> <span class="n">Distribution</span>
+<span></span><span class="c1"># mypy: allow-untyped-defs</span>
+<span class="kn">import</span> <span class="nn">math</span>
+<span class="kn">from</span> <span class="nn">numbers</span> <span class="kn">import</span> <span class="n">Number</span><span class="p">,</span> <span class="n">Real</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">List</span>
 
-<span class="c1"># Define a custom Normal distribution class that inherits from PyTorch&#39;s Distribution class</span>
-<div class="viewcode-block" id="Normal"><a class="viewcode-back" href="../../distributions.html#irt.distributions.Normal">[docs]</a><span class="k">class</span> <span class="nc">Normal</span><span class="p">(</span><span class="n">Distribution</span><span class="p">):</span>
-    <span class="c1"># Indicates that the distribution supports reparameterized sampling</span>
+<span class="kn">import</span> <span class="nn">torch</span>
+<span class="kn">import</span> <span class="nn">torch.nn.functional</span> <span class="k">as</span> <span class="nn">F</span>
+<span class="kn">from</span> <span class="nn">torch.distributions</span> <span class="kn">import</span> <span class="n">constraints</span><span class="p">,</span> <span class="n">Distribution</span>
+<span class="kn">from</span> <span class="nn">torch.distributions.exp_family</span> <span class="kn">import</span> <span class="n">ExponentialFamily</span>
+<span class="kn">from</span> <span class="nn">torch.distributions.utils</span> <span class="kn">import</span> <span class="n">broadcast_all</span>
+<span class="kn">from</span> <span class="nn">torch.autograd.functional</span> <span class="kn">import</span> <span class="n">jacobian</span>
+<span class="kn">from</span> <span class="nn">torch.distributions</span> <span class="kn">import</span> <span class="n">Distribution</span><span class="p">,</span> <span class="n">Bernoulli</span><span class="p">,</span> <span class="n">Binomial</span>
+<span class="kn">from</span> <span class="nn">torch.distributions</span> <span class="kn">import</span> <span class="n">ContinuousBernoulli</span><span class="p">,</span> <span class="n">Geometric</span><span class="p">,</span> <span class="n">NegativeBinomial</span><span class="p">,</span> <span class="n">RelaxedBernoulli</span>
+<span class="kn">from</span> <span class="nn">torch.types</span> <span class="kn">import</span> <span class="n">_size</span>
+
+
+<div class="viewcode-block" id="Beta"><a class="viewcode-back" href="../../distributions.html#irt.distributions.Beta">[docs]</a><span class="k">class</span> <span class="nc">Beta</span><span class="p">(</span><span class="n">ExponentialFamily</span><span class="p">):</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Beta distribution parameterized by :attr:`concentration1` and :attr:`concentration0`.</span>
+
+<span class="sd">    Example::</span>
+
+<span class="sd">        &gt;&gt;&gt; # xdoctest: +IGNORE_WANT(&quot;non-deterministic&quot;)</span>
+<span class="sd">        &gt;&gt;&gt; m = Beta(torch.tensor([0.5]), torch.tensor([0.5]))</span>
+<span class="sd">        &gt;&gt;&gt; m.sample()  # Beta distributed with concentration concentration1 and concentration0</span>
+<span class="sd">        tensor([ 0.1046])</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        concentration1 (float or Tensor): 1st concentration parameter of the distribution</span>
+<span class="sd">            (often referred to as alpha)</span>
+<span class="sd">        concentration0 (float or Tensor): 2nd concentration parameter of the distribution</span>
+<span class="sd">            (often referred to as beta)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">arg_constraints</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">&quot;concentration1&quot;</span><span class="p">:</span> <span class="n">constraints</span><span class="o">.</span><span class="n">positive</span><span class="p">,</span>
+        <span class="s2">&quot;concentration0&quot;</span><span class="p">:</span> <span class="n">constraints</span><span class="o">.</span><span class="n">positive</span><span class="p">,</span>
+    <span class="p">}</span>
+    <span class="n">support</span> <span class="o">=</span> <span class="n">constraints</span><span class="o">.</span><span class="n">unit_interval</span>
     <span class="n">has_rsample</span> <span class="o">=</span> <span class="kc">True</span>
 
-    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">loc</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">scale</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">generator</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Generator</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Initializes the Normal distribution with a given mean (loc) and standard deviation (scale).</span>
-
-<span class="sd">        Args:</span>
-<span class="sd">            loc (Tensor): Mean of the normal distribution. This defines the central tendency of the distribution.</span>
-<span class="sd">            scale (Tensor): Standard deviation of the normal distribution. This defines the spread or width of the distribution.</span>
-<span class="sd">            generator (torch.Generator, optional): A random number generator for reproducible sampling.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">loc</span> <span class="o">=</span> <span class="n">loc</span>  <span class="c1"># Mean of the distribution</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">scale</span> <span class="o">=</span> <span class="n">scale</span>  <span class="c1"># Standard deviation of the distribution</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">generator</span> <span class="o">=</span> <span class="n">generator</span>  <span class="c1"># Optional random number generator for reproducibility</span>
-        <span class="nb">super</span><span class="p">(</span><span class="n">Distribution</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>  <span class="c1"># Initialize the base Distribution class</span>
-
-<div class="viewcode-block" id="Normal.transform"><a class="viewcode-back" href="../../distributions.html#irt.distributions.Normal.transform">[docs]</a>    <span class="k">def</span> <span class="nf">transform</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">z</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Transforms the input tensor `z` to the standard normal form using the distribution&#39;s mean and scale.</span>
-
-<span class="sd">        Args:</span>
-<span class="sd">            z (Tensor): Input tensor to be transformed.</span>
-
-<span class="sd">        Returns:</span>
-<span class="sd">            Tensor: The transformed tensor, which is normalized to have mean 0 and standard deviation 1.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="p">(</span><span class="n">z</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">loc</span><span class="p">)</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">scale</span></div>
-
-<div class="viewcode-block" id="Normal.d_transform_d_z"><a class="viewcode-back" href="../../distributions.html#irt.distributions.Normal.d_transform_d_z">[docs]</a>    <span class="k">def</span> <span class="nf">d_transform_d_z</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Computes the derivative of the transform function with respect to the input tensor `z`.</span>
-
-<span class="sd">        Returns:</span>
-<span class="sd">            Tensor: The derivative, which is the reciprocal of the scale. This is used for reparameterization.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="mi">1</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">scale</span></div>
-
-<div class="viewcode-block" id="Normal.sample"><a class="viewcode-back" href="../../distributions.html#irt.distributions.Normal.sample">[docs]</a>    <span class="k">def</span> <span class="nf">sample</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Generates a sample from the Normal distribution using PyTorch&#39;s `torch.normal` function.</span>
-
-<span class="sd">        Returns:</span>
-<span class="sd">            Tensor: A tensor containing a sample from the distribution. The `detach()` method is used to prevent</span>
-<span class="sd">                    gradients from being tracked during sampling.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">loc</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">scale</span><span class="p">,</span> <span class="n">generator</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">generator</span><span class="p">)</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span></div>
-
-<div class="viewcode-block" id="Normal.rsample"><a class="viewcode-back" href="../../distributions.html#irt.distributions.Normal.rsample">[docs]</a>    <span class="k">def</span> <span class="nf">rsample</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Generates a reparameterized sample from the Normal distribution, which is useful for gradient-based optimization.</span>
-
-<span class="sd">        The `rsample` method generates a sample `x`, applies a transformation, and creates a surrogate sample</span>
-<span class="sd">        that allows gradients to flow through the sampling process.</span>
-
-<span class="sd">        Returns:</span>
-<span class="sd">            Tensor: A reparameterized sample tensor, which allows gradient backpropagation.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">x</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sample</span><span class="p">()</span>  <span class="c1"># Sample from the distribution</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">concentration1</span><span class="p">,</span> <span class="n">concentration0</span><span class="p">,</span> <span class="n">validate_args</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="c1">#self.df, self.loc, self.scale = broadcast_all(df, loc, scale)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">concentration1</span> <span class="o">=</span> <span class="n">concentration1</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">concentration0</span> <span class="o">=</span> <span class="n">concentration0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_gamma1</span> <span class="o">=</span> <span class="n">Gamma</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">concentration1</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">ones_like</span><span class="p">(</span><span class="n">concentration1</span><span class="p">),</span> <span class="n">validate_args</span><span class="o">=</span><span class="n">validate_args</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_gamma0</span> <span class="o">=</span> <span class="n">Gamma</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">concentration0</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">ones_like</span><span class="p">(</span><span class="n">concentration0</span><span class="p">),</span> <span class="n">validate_args</span><span class="o">=</span><span class="n">validate_args</span><span class="p">)</span>
         
-        <span class="n">transform</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>  <span class="c1"># Transform the sample to standard normal form</span>
-        <span class="n">surrogate_x</span> <span class="o">=</span> <span class="o">-</span><span class="n">transform</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">d_transform_d_z</span><span class="p">()</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span>  <span class="c1"># Compute the surrogate for backpropagation</span>
-        <span class="c1"># Return the sample adjusted to allow gradient flow</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_gamma0</span><span class="o">.</span><span class="n">_batch_shape</span><span class="p">,</span> <span class="n">validate_args</span><span class="o">=</span><span class="n">validate_args</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">expand</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">batch_shape</span><span class="p">,</span> <span class="n">_instance</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="n">new</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_checked_instance</span><span class="p">(</span><span class="n">Beta</span><span class="p">,</span> <span class="n">_instance</span><span class="p">)</span>
+        <span class="n">batch_shape</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">Size</span><span class="p">(</span><span class="n">batch_shape</span><span class="p">)</span>
+        <span class="n">new</span><span class="o">.</span><span class="n">_gamma1</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_gamma1</span><span class="o">.</span><span class="n">expand</span><span class="p">(</span><span class="n">batch_shape</span><span class="p">)</span>
+        <span class="n">new</span><span class="o">.</span><span class="n">_gamma0</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_gamma0</span><span class="o">.</span><span class="n">expand</span><span class="p">(</span><span class="n">batch_shape</span><span class="p">)</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">Beta</span><span class="p">,</span> <span class="n">new</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">batch_shape</span><span class="p">,</span> <span class="n">validate_args</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+        <span class="n">new</span><span class="o">.</span><span class="n">_validate_args</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_validate_args</span>
+        <span class="k">return</span> <span class="n">new</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">mean</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">concentration1</span> <span class="o">/</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">concentration1</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">concentration0</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">mode</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">concentration1</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span><span class="o">/</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">concentration1</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">concentration0</span> <span class="o">-</span> <span class="mi">2</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">variance</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">total</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">concentration1</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">concentration0</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">concentration1</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">concentration0</span> <span class="o">/</span> <span class="p">(</span><span class="n">total</span><span class="o">.</span><span class="n">pow</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="n">total</span> <span class="o">+</span> <span class="mi">1</span><span class="p">))</span>
+
+    <span class="k">def</span> <span class="nf">rsample</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sample_shape</span><span class="p">:</span> <span class="n">_size</span> <span class="o">=</span> <span class="p">())</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
+        <span class="n">z1</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_gamma1</span><span class="o">.</span><span class="n">rsample</span><span class="p">(</span><span class="n">sample_shape</span><span class="p">)</span>
+        <span class="n">z0</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_gamma0</span><span class="o">.</span><span class="n">rsample</span><span class="p">(</span><span class="n">sample_shape</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">z1</span><span class="o">/</span><span class="p">(</span><span class="n">z1</span><span class="o">+</span><span class="n">z0</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">log_prob</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_validate_args</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_validate_sample</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+        <span class="n">heads_tails</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">stack</span><span class="p">([</span><span class="n">value</span><span class="p">,</span> <span class="mf">1.0</span> <span class="o">-</span> <span class="n">value</span><span class="p">],</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_dirichlet</span><span class="o">.</span><span class="n">log_prob</span><span class="p">(</span><span class="n">heads_tails</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">entropy</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_dirichlet</span><span class="o">.</span><span class="n">entropy</span><span class="p">()</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">_natural_params</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">concentration1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">concentration0</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_log_normalizer</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">lgamma</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="o">+</span> <span class="n">torch</span><span class="o">.</span><span class="n">lgamma</span><span class="p">(</span><span class="n">y</span><span class="p">)</span> <span class="o">-</span> <span class="n">torch</span><span class="o">.</span><span class="n">lgamma</span><span class="p">(</span><span class="n">x</span> <span class="o">+</span> <span class="n">y</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="Dirichlet"><a class="viewcode-back" href="../../distributions.html#irt.distributions.Dirichlet">[docs]</a><span class="k">class</span> <span class="nc">Dirichlet</span><span class="p">(</span><span class="n">ExponentialFamily</span><span class="p">):</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Creates a Dirichlet distribution parameterized by concentration :attr:`concentration`.</span>
+
+<span class="sd">    Example::</span>
+
+<span class="sd">        &gt;&gt;&gt; # xdoctest: +IGNORE_WANT(&quot;non-deterministic&quot;)</span>
+<span class="sd">        &gt;&gt;&gt; m = Dirichlet(torch.tensor([0.5, 0.5]))</span>
+<span class="sd">        &gt;&gt;&gt; m.sample()  # Dirichlet distributed with concentration [0.5, 0.5]</span>
+<span class="sd">        tensor([ 0.1046,  0.8954])</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        concentration (Tensor): concentration parameter of the distribution</span>
+<span class="sd">            (often referred to as alpha)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">arg_constraints</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">&quot;concentration&quot;</span><span class="p">:</span> <span class="n">constraints</span><span class="o">.</span><span class="n">independent</span><span class="p">(</span><span class="n">constraints</span><span class="o">.</span><span class="n">positive</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="p">}</span>
+    <span class="n">support</span> <span class="o">=</span> <span class="n">constraints</span><span class="o">.</span><span class="n">simplex</span>
+    <span class="n">has_rsample</span> <span class="o">=</span> <span class="kc">True</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">concentration</span><span class="p">,</span> <span class="n">validate_args</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">concentration</span><span class="o">.</span><span class="n">dim</span><span class="p">()</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="s2">&quot;`concentration` parameter must be at least one-dimensional.&quot;</span>
+            <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">concentration</span> <span class="o">=</span> <span class="n">concentration</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">gamma</span> <span class="o">=</span> <span class="n">Gamma</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">concentration</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">ones_like</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">concentration</span><span class="p">))</span>
+        <span class="n">batch_shape</span><span class="p">,</span> <span class="n">event_shape</span> <span class="o">=</span> <span class="n">concentration</span><span class="o">.</span><span class="n">shape</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">concentration</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">:]</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">batch_shape</span><span class="p">,</span> <span class="n">event_shape</span><span class="p">,</span> <span class="n">validate_args</span><span class="o">=</span><span class="n">validate_args</span><span class="p">)</span>
+
+
+    <span class="k">def</span> <span class="nf">expand</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">batch_shape</span><span class="p">,</span> <span class="n">_instance</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="n">new</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_checked_instance</span><span class="p">(</span><span class="n">Dirichlet</span><span class="p">,</span> <span class="n">_instance</span><span class="p">)</span>
+        <span class="n">batch_shape</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">Size</span><span class="p">(</span><span class="n">batch_shape</span><span class="p">)</span>
+        <span class="n">new</span><span class="o">.</span><span class="n">concentration</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">concentration</span><span class="o">.</span><span class="n">expand</span><span class="p">(</span><span class="n">batch_shape</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">event_shape</span><span class="p">)</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">Dirichlet</span><span class="p">,</span> <span class="n">new</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
+            <span class="n">batch_shape</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">event_shape</span><span class="p">,</span> <span class="n">validate_args</span><span class="o">=</span><span class="kc">False</span>
+        <span class="p">)</span>
+        <span class="n">new</span><span class="o">.</span><span class="n">_validate_args</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_validate_args</span>
+        <span class="k">return</span> <span class="n">new</span>
+
+
+    <span class="k">def</span> <span class="nf">rsample</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sample_shape</span><span class="p">:</span> <span class="n">_size</span> <span class="o">=</span> <span class="p">())</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
+        <span class="n">z</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">gamma</span><span class="o">.</span><span class="n">rsample</span><span class="p">(</span><span class="n">sample_shape</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">batch_shape</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span> <span class="ow">or</span> <span class="nb">len</span><span class="p">(</span><span class="n">sample_shape</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">dim</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">dim</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">z</span><span class="o">.</span><span class="n">dim</span><span class="p">()))</span>
+        
+        <span class="k">return</span> <span class="n">z</span><span class="o">*</span><span class="n">torch</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="n">torch</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">z</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">dim</span><span class="p">))</span>
+
+
+    <span class="k">def</span> <span class="nf">log_prob</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_validate_args</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_validate_sample</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+        <span class="k">return</span> <span class="p">(</span>
+            <span class="n">torch</span><span class="o">.</span><span class="n">xlogy</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">concentration</span> <span class="o">-</span> <span class="mf">1.0</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+            <span class="o">+</span> <span class="n">torch</span><span class="o">.</span><span class="n">lgamma</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">concentration</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">))</span>
+            <span class="o">-</span> <span class="n">torch</span><span class="o">.</span><span class="n">lgamma</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">concentration</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="p">)</span>
+
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">mean</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">concentration</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">concentration</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="kc">True</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">mode</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">concentrationm1</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">concentration</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">clamp</span><span class="p">(</span><span class="nb">min</span><span class="o">=</span><span class="mf">0.0</span><span class="p">)</span>
+        <span class="n">mode</span> <span class="o">=</span> <span class="n">concentrationm1</span> <span class="o">/</span> <span class="n">concentrationm1</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="kc">True</span><span class="p">)</span>
+        <span class="n">mask</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">concentration</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">mode</span><span class="p">[</span><span class="n">mask</span><span class="p">]</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">functional</span><span class="o">.</span><span class="n">one_hot</span><span class="p">(</span>
+            <span class="n">mode</span><span class="p">[</span><span class="n">mask</span><span class="p">]</span><span class="o">.</span><span class="n">argmax</span><span class="p">(</span><span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">),</span> <span class="n">concentrationm1</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="p">)</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">mode</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">mode</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">variance</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">con0</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">concentration</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="kc">True</span><span class="p">)</span>
+        <span class="k">return</span> <span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">concentration</span>
+            <span class="o">*</span> <span class="p">(</span><span class="n">con0</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">concentration</span><span class="p">)</span>
+            <span class="o">/</span> <span class="p">(</span><span class="n">con0</span><span class="o">.</span><span class="n">pow</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="n">con0</span> <span class="o">+</span> <span class="mi">1</span><span class="p">))</span>
+        <span class="p">)</span>
+
+
+    <span class="k">def</span> <span class="nf">entropy</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">k</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">concentration</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">a0</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">concentration</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="k">return</span> <span class="p">(</span>
+            <span class="n">torch</span><span class="o">.</span><span class="n">lgamma</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">concentration</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+            <span class="o">-</span> <span class="n">torch</span><span class="o">.</span><span class="n">lgamma</span><span class="p">(</span><span class="n">a0</span><span class="p">)</span>
+            <span class="o">-</span> <span class="p">(</span><span class="n">k</span> <span class="o">-</span> <span class="n">a0</span><span class="p">)</span> <span class="o">*</span> <span class="n">torch</span><span class="o">.</span><span class="n">digamma</span><span class="p">(</span><span class="n">a0</span><span class="p">)</span>
+            <span class="o">-</span> <span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">concentration</span> <span class="o">-</span> <span class="mf">1.0</span><span class="p">)</span> <span class="o">*</span> <span class="n">torch</span><span class="o">.</span><span class="n">digamma</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">concentration</span><span class="p">))</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="p">)</span>
+
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">_natural_params</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">concentration</span><span class="p">,)</span>
+
+    <span class="k">def</span> <span class="nf">_log_normalizer</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">x</span><span class="o">.</span><span class="n">lgamma</span><span class="p">()</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span> <span class="o">-</span> <span class="n">torch</span><span class="o">.</span><span class="n">lgamma</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">))</span></div>
+
+
+
+<div class="viewcode-block" id="StudentT"><a class="viewcode-back" href="../../distributions.html#irt.distributions.StudentT">[docs]</a><span class="k">class</span> <span class="nc">StudentT</span><span class="p">(</span><span class="n">Distribution</span><span class="p">):</span>
+    <span class="n">arg_constraints</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">&quot;df&quot;</span><span class="p">:</span> <span class="n">constraints</span><span class="o">.</span><span class="n">positive</span><span class="p">,</span>
+        <span class="s2">&quot;loc&quot;</span><span class="p">:</span> <span class="n">constraints</span><span class="o">.</span><span class="n">real</span><span class="p">,</span>
+        <span class="s2">&quot;scale&quot;</span><span class="p">:</span> <span class="n">constraints</span><span class="o">.</span><span class="n">positive</span><span class="p">,</span>
+    <span class="p">}</span>
+    <span class="n">support</span> <span class="o">=</span> <span class="n">constraints</span><span class="o">.</span><span class="n">real</span>
+    <span class="n">has_rsample</span> <span class="o">=</span> <span class="kc">True</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">df</span><span class="p">,</span> <span class="n">loc</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">scale</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">validate_args</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">df</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">loc</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">scale</span> <span class="o">=</span> <span class="n">broadcast_all</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">loc</span><span class="p">,</span> <span class="n">scale</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">gamma</span> <span class="o">=</span> <span class="n">Gamma</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">df</span><span class="o">*</span><span class="mf">0.5</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">df</span><span class="o">*</span><span class="mf">0.5</span><span class="p">)</span>
+        <span class="n">batch_shape</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">df</span><span class="o">.</span><span class="n">size</span><span class="p">()</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">batch_shape</span><span class="p">,</span> <span class="n">validate_args</span><span class="o">=</span><span class="n">validate_args</span><span class="p">)</span>
+        
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">mean</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">m</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">loc</span><span class="o">.</span><span class="n">clone</span><span class="p">(</span><span class="n">memory_format</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">contiguous_format</span><span class="p">)</span>
+        <span class="n">m</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">df</span> <span class="o">&lt;=</span> <span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">nan</span>
+        <span class="k">return</span> <span class="n">m</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">mode</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">loc</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">variance</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">m</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">df</span><span class="o">.</span><span class="n">clone</span><span class="p">(</span><span class="n">memory_format</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">contiguous_format</span><span class="p">)</span>
+        <span class="n">m</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">df</span> <span class="o">&gt;</span> <span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">scale</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">df</span> <span class="o">&gt;</span> <span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">pow</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+            <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">df</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">df</span> <span class="o">&gt;</span> <span class="mi">2</span><span class="p">]</span>
+            <span class="o">/</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">df</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">df</span> <span class="o">&gt;</span> <span class="mi">2</span><span class="p">]</span> <span class="o">-</span> <span class="mi">2</span><span class="p">)</span>
+        <span class="p">)</span>
+        <span class="n">m</span><span class="p">[(</span><span class="bp">self</span><span class="o">.</span><span class="n">df</span> <span class="o">&lt;=</span> <span class="mi">2</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">df</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">)]</span> <span class="o">=</span> <span class="n">inf</span>
+        <span class="n">m</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">df</span> <span class="o">&lt;=</span> <span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">nan</span>
+        <span class="k">return</span> <span class="n">m</span>
+
+    <span class="k">def</span> <span class="nf">expand</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">batch_shape</span><span class="p">,</span> <span class="n">_instance</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="n">new</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_checked_instance</span><span class="p">(</span><span class="n">StudentT</span><span class="p">,</span> <span class="n">_instance</span><span class="p">)</span>
+        <span class="n">batch_shape</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">Size</span><span class="p">(</span><span class="n">batch_shape</span><span class="p">)</span>
+        <span class="n">new</span><span class="o">.</span><span class="n">df</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">df</span><span class="o">.</span><span class="n">expand</span><span class="p">(</span><span class="n">batch_shape</span><span class="p">)</span>
+        <span class="n">new</span><span class="o">.</span><span class="n">loc</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">loc</span><span class="o">.</span><span class="n">expand</span><span class="p">(</span><span class="n">batch_shape</span><span class="p">)</span>
+        <span class="n">new</span><span class="o">.</span><span class="n">scale</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">scale</span><span class="o">.</span><span class="n">expand</span><span class="p">(</span><span class="n">batch_shape</span><span class="p">)</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">StudentT</span><span class="p">,</span> <span class="n">new</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">batch_shape</span><span class="p">,</span> <span class="n">validate_args</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+        <span class="n">new</span><span class="o">.</span><span class="n">_validate_args</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_validate_args</span>
+        <span class="k">return</span> <span class="n">new</span>
+
+
+    <span class="k">def</span> <span class="nf">log_prob</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_validate_args</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_validate_sample</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+        <span class="n">y</span> <span class="o">=</span> <span class="p">(</span><span class="n">value</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">loc</span><span class="p">)</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">scale</span>
+        <span class="n">Z</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">scale</span><span class="o">.</span><span class="n">log</span><span class="p">()</span>
+            <span class="o">+</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">df</span><span class="o">.</span><span class="n">log</span><span class="p">()</span>
+            <span class="o">+</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">math</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">math</span><span class="o">.</span><span class="n">pi</span><span class="p">)</span>
+            <span class="o">+</span> <span class="n">torch</span><span class="o">.</span><span class="n">lgamma</span><span class="p">(</span><span class="mf">0.5</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">df</span><span class="p">)</span>
+            <span class="o">-</span> <span class="n">torch</span><span class="o">.</span><span class="n">lgamma</span><span class="p">(</span><span class="mf">0.5</span> <span class="o">*</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">df</span> <span class="o">+</span> <span class="mf">1.0</span><span class="p">))</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="o">-</span><span class="mf">0.5</span> <span class="o">*</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">df</span> <span class="o">+</span> <span class="mf">1.0</span><span class="p">)</span> <span class="o">*</span> <span class="n">torch</span><span class="o">.</span><span class="n">log1p</span><span class="p">(</span><span class="n">y</span><span class="o">**</span><span class="mf">2.0</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">df</span><span class="p">)</span> <span class="o">-</span> <span class="n">Z</span>
+
+
+    <span class="k">def</span> <span class="nf">entropy</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">lbeta</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">torch</span><span class="o">.</span><span class="n">lgamma</span><span class="p">(</span><span class="mf">0.5</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">df</span><span class="p">)</span>
+            <span class="o">+</span> <span class="n">math</span><span class="o">.</span><span class="n">lgamma</span><span class="p">(</span><span class="mf">0.5</span><span class="p">)</span>
+            <span class="o">-</span> <span class="n">torch</span><span class="o">.</span><span class="n">lgamma</span><span class="p">(</span><span class="mf">0.5</span> <span class="o">*</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">df</span> <span class="o">+</span> <span class="mi">1</span><span class="p">))</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">scale</span><span class="o">.</span><span class="n">log</span><span class="p">()</span>
+            <span class="o">+</span> <span class="mf">0.5</span>
+            <span class="o">*</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">df</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+            <span class="o">*</span> <span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">digamma</span><span class="p">(</span><span class="mf">0.5</span> <span class="o">*</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">df</span> <span class="o">+</span> <span class="mi">1</span><span class="p">))</span> <span class="o">-</span> <span class="n">torch</span><span class="o">.</span><span class="n">digamma</span><span class="p">(</span><span class="mf">0.5</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">df</span><span class="p">))</span>
+            <span class="o">+</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">df</span><span class="o">.</span><span class="n">log</span><span class="p">()</span>
+            <span class="o">+</span> <span class="n">lbeta</span>
+        <span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_transform</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">z</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Transforms an input tensor `z` to a standardized form based on the mean and scale.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            z (torch.Tensor): Input tensor to transform.</span>
+<span class="sd">        </span>
+<span class="sd">        Returns:</span>
+<span class="sd">            torch.Tensor: The transformed tensor, representing the standardized normal form.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">(</span><span class="n">z</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">loc</span><span class="p">)</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">scale</span>
+
+    <span class="k">def</span> <span class="nf">_d_transform_d_z</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Computes the derivative of the transform function with respect to `z`.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            torch.Tensor: The reciprocal of the scale, representing the gradient for reparameterization.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="mi">1</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">scale</span>
+
+    <span class="k">def</span> <span class="nf">rsample</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sample_shape</span><span class="p">:</span> <span class="n">_size</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">Size</span><span class="p">())</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>        
+        <span class="n">shape</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_extended_shape</span><span class="p">(</span><span class="n">sample_shape</span><span class="p">)</span>
+        
+        <span class="n">sigma</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">gamma</span><span class="o">.</span><span class="n">rsample</span><span class="p">(</span><span class="n">shape</span><span class="p">)</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">loc</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">scale</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span> <span class="o">*</span> <span class="n">Normal</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">sigma</span><span class="p">)</span><span class="o">.</span><span class="n">rsample</span><span class="p">(</span><span class="n">shape</span><span class="p">)</span>
+
+        <span class="n">transform</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_transform</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">detach</span><span class="p">())</span>
+        
+        <span class="n">surrogate_x</span> <span class="o">=</span> <span class="o">-</span><span class="n">transform</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">_d_transform_d_z</span><span class="p">()</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span>
+        
+        <span class="k">return</span> <span class="n">x</span> <span class="o">+</span> <span class="p">(</span><span class="n">surrogate_x</span> <span class="o">-</span> <span class="n">surrogate_x</span><span class="o">.</span><span class="n">detach</span><span class="p">())</span></div>
+
+<div class="viewcode-block" id="Gamma"><a class="viewcode-back" href="../../distributions.html#irt.distributions.Gamma">[docs]</a><span class="k">class</span> <span class="nc">Gamma</span><span class="p">(</span><span class="n">ExponentialFamily</span><span class="p">):</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Creates a Gamma distribution parameterized by shape :attr:`concentration` and :attr:`rate`.</span>
+
+<span class="sd">    Example::</span>
+
+<span class="sd">        &gt;&gt;&gt; # xdoctest: +IGNORE_WANT(&quot;non-deterministic&quot;)</span>
+<span class="sd">        &gt;&gt;&gt; m = Gamma(torch.tensor([1.0]), torch.tensor([1.0]))</span>
+<span class="sd">        &gt;&gt;&gt; m.sample()  # Gamma distributed with concentration=1 and rate=1</span>
+<span class="sd">        tensor([ 0.1046])</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        concentration (float or Tensor): shape parameter of the distribution</span>
+<span class="sd">            (often referred to as alpha)</span>
+<span class="sd">        rate (float or Tensor): rate = 1 / scale of the distribution</span>
+<span class="sd">            (often referred to as beta)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">arg_constraints</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">&quot;concentration&quot;</span><span class="p">:</span> <span class="n">constraints</span><span class="o">.</span><span class="n">positive</span><span class="p">,</span>
+        <span class="s2">&quot;rate&quot;</span><span class="p">:</span> <span class="n">constraints</span><span class="o">.</span><span class="n">positive</span><span class="p">,</span>
+    <span class="p">}</span>
+    <span class="n">support</span> <span class="o">=</span> <span class="n">constraints</span><span class="o">.</span><span class="n">nonnegative</span>
+    <span class="n">has_rsample</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="n">_mean_carrier_measure</span> <span class="o">=</span> <span class="mi">0</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">mean</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">concentration</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">rate</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">mode</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">concentration</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">rate</span><span class="p">)</span><span class="o">.</span><span class="n">clamp</span><span class="p">(</span><span class="nb">min</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">variance</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">concentration</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">rate</span><span class="o">.</span><span class="n">pow</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">concentration</span><span class="p">,</span> <span class="n">rate</span><span class="p">,</span> <span class="n">validate_args</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">concentration</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">rate</span> <span class="o">=</span> <span class="n">broadcast_all</span><span class="p">(</span><span class="n">concentration</span><span class="p">,</span> <span class="n">rate</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">concentration</span><span class="p">,</span> <span class="n">Number</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">rate</span><span class="p">,</span> <span class="n">Number</span><span class="p">):</span>
+            <span class="n">batch_shape</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">Size</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">batch_shape</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">concentration</span><span class="o">.</span><span class="n">size</span><span class="p">()</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">batch_shape</span><span class="p">,</span> <span class="n">validate_args</span><span class="o">=</span><span class="n">validate_args</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">expand</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">batch_shape</span><span class="p">,</span> <span class="n">_instance</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="n">new</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_checked_instance</span><span class="p">(</span><span class="n">Gamma</span><span class="p">,</span> <span class="n">_instance</span><span class="p">)</span>
+        <span class="n">batch_shape</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">Size</span><span class="p">(</span><span class="n">batch_shape</span><span class="p">)</span>
+        <span class="n">new</span><span class="o">.</span><span class="n">concentration</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">concentration</span><span class="o">.</span><span class="n">expand</span><span class="p">(</span><span class="n">batch_shape</span><span class="p">)</span>
+        <span class="n">new</span><span class="o">.</span><span class="n">rate</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">rate</span><span class="o">.</span><span class="n">expand</span><span class="p">(</span><span class="n">batch_shape</span><span class="p">)</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">Gamma</span><span class="p">,</span> <span class="n">new</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">batch_shape</span><span class="p">,</span> <span class="n">validate_args</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+        <span class="n">new</span><span class="o">.</span><span class="n">_validate_args</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_validate_args</span>
+        <span class="k">return</span> <span class="n">new</span>
+
+
+    <span class="k">def</span> <span class="nf">rsample</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sample_shape</span><span class="p">:</span> <span class="n">_size</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">Size</span><span class="p">())</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
+        <span class="n">shape</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_extended_shape</span><span class="p">(</span><span class="n">sample_shape</span><span class="p">)</span>
+        <span class="n">concentration</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">concentration</span><span class="o">.</span><span class="n">expand</span><span class="p">(</span><span class="n">shape</span><span class="p">)</span>
+        <span class="n">rate</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">rate</span><span class="o">.</span><span class="n">expand</span><span class="p">(</span><span class="n">shape</span><span class="p">)</span>
+        
+        <span class="c1">##################################################################################################################</span>
+        <span class="c1">### U can think that this method is total shit                                                                 ###</span>
+        <span class="c1">### BUT you MUST calculate for gamma (Of course we can do it, I can give you version of it.)                   ###</span>
+        <span class="c1">### BUT we MUST do it in more efficient way and the most efficient way is to use C++ implementation from Torch.###</span>
+        <span class="c1">##################################################################################################################</span>
+        <span class="n">value</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">_standard_gamma</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">concentration</span><span class="p">)</span><span class="o">/</span><span class="n">rate</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span>
+        <span class="n">u</span> <span class="o">=</span> <span class="n">value</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span> <span class="o">*</span> <span class="n">rate</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span> <span class="o">/</span> <span class="n">rate</span>
+        <span class="n">value</span> <span class="o">=</span> <span class="n">value</span> <span class="o">+</span> <span class="p">(</span><span class="n">u</span> <span class="o">-</span> <span class="n">u</span><span class="o">.</span><span class="n">detach</span><span class="p">())</span>
+        
+        <span class="n">value</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span><span class="o">.</span><span class="n">clamp_</span><span class="p">(</span>
+            <span class="nb">min</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">finfo</span><span class="p">(</span><span class="n">value</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span><span class="o">.</span><span class="n">tiny</span>
+        <span class="p">)</span>  <span class="c1"># do not record in autograd graph</span>
+        <span class="k">return</span> <span class="n">value</span> 
+
+
+    <span class="k">def</span> <span class="nf">log_prob</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="n">value</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">as_tensor</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">rate</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">rate</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_validate_args</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_validate_sample</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+        <span class="k">return</span> <span class="p">(</span>
+            <span class="n">torch</span><span class="o">.</span><span class="n">xlogy</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">concentration</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">rate</span><span class="p">)</span>
+            <span class="o">+</span> <span class="n">torch</span><span class="o">.</span><span class="n">xlogy</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">concentration</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+            <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">rate</span> <span class="o">*</span> <span class="n">value</span>
+            <span class="o">-</span> <span class="n">torch</span><span class="o">.</span><span class="n">lgamma</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">concentration</span><span class="p">)</span>
+        <span class="p">)</span>
+
+
+    <span class="k">def</span> <span class="nf">entropy</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">concentration</span>
+            <span class="o">-</span> <span class="n">torch</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">rate</span><span class="p">)</span>
+            <span class="o">+</span> <span class="n">torch</span><span class="o">.</span><span class="n">lgamma</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">concentration</span><span class="p">)</span>
+            <span class="o">+</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">concentration</span><span class="p">)</span> <span class="o">*</span> <span class="n">torch</span><span class="o">.</span><span class="n">digamma</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">concentration</span><span class="p">)</span>
+        <span class="p">)</span>
+
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">_natural_params</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">concentration</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">rate</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_log_normalizer</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">lgamma</span><span class="p">(</span><span class="n">x</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">+</span> <span class="p">(</span><span class="n">x</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="n">torch</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="o">-</span><span class="n">y</span><span class="o">.</span><span class="n">reciprocal</span><span class="p">())</span>
+
+    <span class="k">def</span> <span class="nf">cdf</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_validate_args</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_validate_sample</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">special</span><span class="o">.</span><span class="n">gammainc</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">concentration</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">rate</span> <span class="o">*</span> <span class="n">value</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Normal"><a class="viewcode-back" href="../../distributions.html#irt.distributions.Normal">[docs]</a><span class="k">class</span> <span class="nc">Normal</span><span class="p">(</span><span class="n">ExponentialFamily</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Represents the Normal (Gaussian) distribution with specified mean (loc) and standard deviation (scale).</span>
+<span class="sd">    Inherits from PyTorch&#39;s ExponentialFamily distribution class.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    
+    <span class="n">has_rsample</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="n">arg_constraints</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;loc&quot;</span><span class="p">:</span> <span class="n">constraints</span><span class="o">.</span><span class="n">real</span><span class="p">,</span> <span class="s2">&quot;scale&quot;</span><span class="p">:</span> <span class="n">constraints</span><span class="o">.</span><span class="n">positive</span><span class="p">}</span>
+    <span class="n">support</span> <span class="o">=</span> <span class="n">constraints</span><span class="o">.</span><span class="n">real</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">loc</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span>
+        <span class="n">scale</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span>
+        <span class="n">validate_args</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">bool</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Initializes the Normal distribution.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            loc (torch.Tensor): Mean (location) parameter of the distribution.</span>
+<span class="sd">            scale (torch.Tensor): Standard deviation (scale) parameter of the distribution.</span>
+<span class="sd">            validate_args (Optional[bool]): If True, checks the distribution parameters for validity.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">loc</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">scale</span> <span class="o">=</span> <span class="n">broadcast_all</span><span class="p">(</span><span class="n">loc</span><span class="p">,</span> <span class="n">scale</span><span class="p">)</span>
+        <span class="c1"># Determine batch shape based on the type of `loc` and `scale`.</span>
+        <span class="n">batch_shape</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">Size</span><span class="p">()</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">loc</span><span class="p">,</span> <span class="n">Number</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">scale</span><span class="p">,</span> <span class="n">Number</span><span class="p">)</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">loc</span><span class="o">.</span><span class="n">size</span><span class="p">()</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">batch_shape</span><span class="p">,</span> <span class="n">validate_args</span><span class="o">=</span><span class="n">validate_args</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">mean</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Returns the mean of the distribution.</span>
+<span class="sd">        </span>
+<span class="sd">        Returns:</span>
+<span class="sd">            torch.Tensor: The mean (location) parameter `loc`.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">loc</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">mode</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Returns the mode of the distribution.</span>
+<span class="sd">        </span>
+<span class="sd">        Returns:</span>
+<span class="sd">            torch.Tensor: The mode (equal to `loc` in a Normal distribution).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">loc</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">stddev</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Returns the standard deviation of the distribution.</span>
+<span class="sd">        </span>
+<span class="sd">        Returns:</span>
+<span class="sd">            torch.Tensor: The standard deviation (scale) parameter `scale`.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">scale</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">variance</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Returns the variance of the distribution.</span>
+<span class="sd">        </span>
+<span class="sd">        Returns:</span>
+<span class="sd">            torch.Tensor: The variance, computed as `scale ** 2`.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">stddev</span><span class="o">.</span><span class="n">pow</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+
+<div class="viewcode-block" id="Normal.entropy"><a class="viewcode-back" href="../../distributions.html#irt.distributions.Normal.entropy">[docs]</a>    <span class="k">def</span> <span class="nf">entropy</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Computes the entropy of the distribution.</span>
+<span class="sd">        </span>
+<span class="sd">        Returns:</span>
+<span class="sd">            torch.Tensor: The entropy of the Normal distribution, which is a measure of uncertainty.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="mf">0.5</span> <span class="o">+</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">math</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">math</span><span class="o">.</span><span class="n">pi</span><span class="p">)</span> <span class="o">+</span> <span class="n">torch</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">scale</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Normal.cdf"><a class="viewcode-back" href="../../distributions.html#irt.distributions.Normal.cdf">[docs]</a>    <span class="k">def</span> <span class="nf">cdf</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Computes the cumulative distribution function (CDF) of the distribution at a given value.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            value (torch.Tensor): The value at which to evaluate the CDF.</span>
+<span class="sd">        </span>
+<span class="sd">        Returns:</span>
+<span class="sd">            torch.Tensor: The probability that a random variable from the distribution is less than or equal to `value`.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">torch</span><span class="o">.</span><span class="n">erf</span><span class="p">((</span><span class="n">value</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">loc</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">scale</span> <span class="o">*</span> <span class="n">math</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mi">2</span><span class="p">))))</span></div>
+
+<div class="viewcode-block" id="Normal.expand"><a class="viewcode-back" href="../../distributions.html#irt.distributions.Normal.expand">[docs]</a>    <span class="k">def</span> <span class="nf">expand</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">batch_shape</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Size</span><span class="p">,</span> <span class="n">_instance</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;Normal&quot;</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Expands the distribution parameters to a new batch shape.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            batch_shape (torch.Size): Desired batch size for the expanded distribution.</span>
+<span class="sd">            _instance (Optional): Instance to check for validity.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Normal: A new Normal distribution with parameters expanded to the specified batch shape.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">new</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_checked_instance</span><span class="p">(</span><span class="n">Normal</span><span class="p">,</span> <span class="n">_instance</span><span class="p">)</span>
+        <span class="n">batch_shape</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">Size</span><span class="p">(</span><span class="n">batch_shape</span><span class="p">)</span>
+        <span class="n">new</span><span class="o">.</span><span class="n">loc</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">loc</span><span class="o">.</span><span class="n">expand</span><span class="p">(</span><span class="n">batch_shape</span><span class="p">)</span>
+        <span class="n">new</span><span class="o">.</span><span class="n">scale</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">scale</span><span class="o">.</span><span class="n">expand</span><span class="p">(</span><span class="n">batch_shape</span><span class="p">)</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">Normal</span><span class="p">,</span> <span class="n">new</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">batch_shape</span><span class="p">,</span> <span class="n">validate_args</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+        <span class="n">new</span><span class="o">.</span><span class="n">_validate_args</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_validate_args</span>
+        <span class="k">return</span> <span class="n">new</span></div>
+
+<div class="viewcode-block" id="Normal.icdf"><a class="viewcode-back" href="../../distributions.html#irt.distributions.Normal.icdf">[docs]</a>    <span class="k">def</span> <span class="nf">icdf</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Computes the inverse cumulative distribution function (quantile function) at a given value.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            value (torch.Tensor): The probability value at which to evaluate the inverse CDF.</span>
+<span class="sd">        </span>
+<span class="sd">        Returns:</span>
+<span class="sd">            torch.Tensor: The quantile corresponding to `value`.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">loc</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">scale</span> <span class="o">*</span> <span class="n">torch</span><span class="o">.</span><span class="n">erfinv</span><span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">value</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="n">math</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Normal.log_prob"><a class="viewcode-back" href="../../distributions.html#irt.distributions.Normal.log_prob">[docs]</a>    <span class="k">def</span> <span class="nf">log_prob</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Computes the log probability density of the distribution at a given value.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            value (torch.Tensor): The value at which to evaluate the log probability.</span>
+<span class="sd">        </span>
+<span class="sd">        Returns:</span>
+<span class="sd">            torch.Tensor: The log probability density at `value`.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">var</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">scale</span><span class="o">**</span><span class="mi">2</span>
+        <span class="n">log_scale</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">scale</span><span class="o">.</span><span class="n">log</span><span class="p">()</span> <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">scale</span><span class="p">,</span> <span class="n">Real</span><span class="p">)</span> <span class="k">else</span> <span class="n">math</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">scale</span><span class="p">)</span>
+        <span class="k">return</span> <span class="o">-</span><span class="p">((</span><span class="n">value</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">loc</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">var</span><span class="p">)</span> <span class="o">-</span> <span class="n">log_scale</span> <span class="o">-</span> <span class="n">math</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">math</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">math</span><span class="o">.</span><span class="n">pi</span><span class="p">))</span></div>
+
+    <span class="k">def</span> <span class="nf">_transform</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">z</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Transforms an input tensor `z` to a standardized form based on the mean and scale.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            z (torch.Tensor): Input tensor to transform.</span>
+<span class="sd">        </span>
+<span class="sd">        Returns:</span>
+<span class="sd">            torch.Tensor: The transformed tensor, representing the standardized normal form.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">(</span><span class="n">z</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">loc</span><span class="p">)</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">scale</span>
+
+    <span class="k">def</span> <span class="nf">_d_transform_d_z</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Computes the derivative of the transform function with respect to `z`.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            torch.Tensor: The reciprocal of the scale, representing the gradient for reparameterization.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="mi">1</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">scale</span>
+
+<div class="viewcode-block" id="Normal.sample"><a class="viewcode-back" href="../../distributions.html#irt.distributions.Normal.sample">[docs]</a>    <span class="k">def</span> <span class="nf">sample</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sample_shape</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Size</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">Size</span><span class="p">())</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Generates a sample from the Normal distribution using `torch.normal`.</span>
+<span class="sd">        </span>
+<span class="sd">        Args:</span>
+<span class="sd">            sample_shape (torch.Size): Shape of the sample to generate.</span>
+<span class="sd">        </span>
+<span class="sd">        Returns:</span>
+<span class="sd">            torch.Tensor: A tensor with samples from the Normal distribution, detached from the computation graph.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">shape</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_extended_shape</span><span class="p">(</span><span class="n">sample_shape</span><span class="p">)</span>
+        <span class="k">with</span> <span class="n">torch</span><span class="o">.</span><span class="n">no_grad</span><span class="p">():</span>
+            <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">loc</span><span class="o">.</span><span class="n">expand</span><span class="p">(</span><span class="n">shape</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">scale</span><span class="o">.</span><span class="n">expand</span><span class="p">(</span><span class="n">shape</span><span class="p">))</span></div>
+        
+<div class="viewcode-block" id="Normal.rsample"><a class="viewcode-back" href="../../distributions.html#irt.distributions.Normal.rsample">[docs]</a>    <span class="k">def</span> <span class="nf">rsample</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sample_shape</span><span class="p">:</span> <span class="n">_size</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">Size</span><span class="p">())</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Generates a reparameterized sample from the Normal distribution, enabling gradient backpropagation.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            torch.Tensor: A tensor containing a reparameterized sample, useful for gradient-based optimization.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Sample a point from the distribution</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="n">sample_shape</span><span class="p">)</span>
+        <span class="c1"># Transform the sample to standard normal form</span>
+        <span class="n">transform</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_transform</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+        <span class="c1"># Compute a surrogate value for backpropagation</span>
+        <span class="n">surrogate_x</span> <span class="o">=</span> <span class="o">-</span><span class="n">transform</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">_d_transform_d_z</span><span class="p">()</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span>
+        <span class="c1"># Return the sample with gradient tracking enabled</span>
         <span class="k">return</span> <span class="n">x</span> <span class="o">+</span> <span class="p">(</span><span class="n">surrogate_x</span> <span class="o">-</span> <span class="n">surrogate_x</span><span class="o">.</span><span class="n">detach</span><span class="p">())</span></div></div>
+        
+
+<div class="viewcode-block" id="MixtureSameFamily"><a class="viewcode-back" href="../../distributions.html#irt.distributions.MixtureSameFamily">[docs]</a><span class="k">class</span> <span class="nc">MixtureSameFamily</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">distributions</span><span class="o">.</span><span class="n">MixtureSameFamily</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    MixtureSameFamily is a class that represents a mixture of distributions</span>
+<span class="sd">    from the same family, supporting reparameterized sampling for gradient-based optimization.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">has_rsample</span> <span class="o">=</span> <span class="kc">True</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Initializes the MixtureSameFamily distribution and checks if the component distributions</span>
+<span class="sd">        support reparameterized sampling (required for `rsample`).</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            ValueError: If the component distributions do not support reparameterized sampling.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_component_distribution</span><span class="o">.</span><span class="n">has_rsample</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Cannot reparameterize a mixture of non-reparameterizable components.&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Define a list of discrete distributions for checking in `_log_cdf`</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">discrete_distributions</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Distribution</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="n">Bernoulli</span><span class="p">,</span>
+            <span class="n">Binomial</span><span class="p">,</span>
+            <span class="n">ContinuousBernoulli</span><span class="p">,</span>
+            <span class="n">Geometric</span><span class="p">,</span>
+            <span class="n">NegativeBinomial</span><span class="p">,</span>
+            <span class="n">RelaxedBernoulli</span><span class="p">,</span>
+        <span class="p">]</span>
+
+<div class="viewcode-block" id="MixtureSameFamily.rsample"><a class="viewcode-back" href="../../distributions.html#irt.distributions.MixtureSameFamily.rsample">[docs]</a>    <span class="k">def</span> <span class="nf">rsample</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sample_shape</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Size</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">Size</span><span class="p">())</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Generates a reparameterized sample from the mixture of distributions.</span>
+
+<span class="sd">        This method generates a sample, applies a distributional transformation,</span>
+<span class="sd">        and computes a surrogate sample to enable gradient flow during optimization.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            sample_shape (torch.Size): The shape of the sample to generate.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            torch.Tensor: A reparameterized sample with gradients enabled.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Generate a sample from the mixture distribution</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="n">sample_shape</span><span class="o">=</span><span class="n">sample_shape</span><span class="p">)</span>
+        <span class="n">event_size</span> <span class="o">=</span> <span class="n">math</span><span class="o">.</span><span class="n">prod</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">event_shape</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">event_size</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="c1"># For multi-dimensional events, use reshaped distributional transformations</span>
+            <span class="k">def</span> <span class="nf">reshaped_dist_trans</span><span class="p">(</span><span class="n">input_x</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_distributional_transform</span><span class="p">(</span><span class="n">input_x</span><span class="p">),</span> <span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">event_size</span><span class="p">))</span>
+
+            <span class="k">def</span> <span class="nf">reshaped_dist_trans_summed</span><span class="p">(</span><span class="n">x_2d</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">reshaped_dist_trans</span><span class="p">(</span><span class="n">x_2d</span><span class="p">),</span> <span class="n">dim</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+
+            <span class="n">x_2d</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">reshape</span><span class="p">((</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">event_size</span><span class="p">))</span>
+            <span class="n">transform_2d</span> <span class="o">=</span> <span class="n">reshaped_dist_trans</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+            <span class="n">jac</span> <span class="o">=</span> <span class="n">jacobian</span><span class="p">(</span><span class="n">reshaped_dist_trans_summed</span><span class="p">,</span> <span class="n">x_2d</span><span class="p">)</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span><span class="o">.</span><span class="n">movedim</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+            <span class="n">surrogate_x_2d</span> <span class="o">=</span> <span class="o">-</span><span class="n">torch</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">solve_triangular</span><span class="p">(</span><span class="n">jac</span><span class="o">.</span><span class="n">detach</span><span class="p">(),</span> <span class="n">transform_2d</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="kc">None</span><span class="p">])</span>
+            <span class="n">surrogate_x</span> <span class="o">=</span> <span class="n">surrogate_x_2d</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># For one-dimensional events, apply the standard distributional transformation</span>
+            <span class="n">transform</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_distributional_transform</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+            <span class="n">log_prob_x</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">log_prob</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_event_ndims</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="n">log_prob_x</span> <span class="o">=</span> <span class="n">log_prob_x</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">log_prob_x</span><span class="o">.</span><span class="n">shape</span> <span class="o">+</span> <span class="p">(</span><span class="mi">1</span><span class="p">,)</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">_event_ndims</span><span class="p">)</span>
+
+            <span class="n">surrogate_x</span> <span class="o">=</span> <span class="o">-</span><span class="n">transform</span> <span class="o">*</span> <span class="n">torch</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="n">log_prob_x</span><span class="o">.</span><span class="n">detach</span><span class="p">())</span>
+
+        <span class="k">return</span> <span class="n">x</span> <span class="o">+</span> <span class="p">(</span><span class="n">surrogate_x</span> <span class="o">-</span> <span class="n">surrogate_x</span><span class="o">.</span><span class="n">detach</span><span class="p">())</span></div>
+
+    <span class="k">def</span> <span class="nf">_distributional_transform</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Applies a distributional transformation to the input sample `x`, using cumulative</span>
+<span class="sd">        distribution functions (CDFs) and posterior weights.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            x (torch.Tensor): The input sample to transform.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            torch.Tensor: The transformed tensor based on the mixture model&#39;s CDFs.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_component_distribution</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">distributions</span><span class="o">.</span><span class="n">Independent</span><span class="p">):</span>
+            <span class="n">univariate_components</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_component_distribution</span><span class="o">.</span><span class="n">base_dist</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">univariate_components</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_component_distribution</span>
+
+        <span class="c1"># Expand input tensor and compute log-probabilities in each component</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_pad</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>  <span class="c1"># [S, B, 1, E]</span>
+        <span class="n">log_prob_x</span> <span class="o">=</span> <span class="n">univariate_components</span><span class="o">.</span><span class="n">log_prob</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>  <span class="c1"># [S, B, K, E]</span>
+
+        <span class="n">event_size</span> <span class="o">=</span> <span class="n">math</span><span class="o">.</span><span class="n">prod</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">event_shape</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">event_size</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="c1"># CDF transformation for multi-dimensional events</span>
+            <span class="n">cumsum_log_prob_x</span> <span class="o">=</span> <span class="n">log_prob_x</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">event_size</span><span class="p">)</span>
+            <span class="n">cumsum_log_prob_x</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cumsum</span><span class="p">(</span><span class="n">cumsum_log_prob_x</span><span class="p">,</span> <span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
+            <span class="n">cumsum_log_prob_x</span> <span class="o">=</span> <span class="n">cumsum_log_prob_x</span><span class="o">.</span><span class="n">roll</span><span class="p">(</span><span class="n">shifts</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">dims</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
+            <span class="n">cumsum_log_prob_x</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="n">cumsum_log_prob_x</span> <span class="o">=</span> <span class="n">cumsum_log_prob_x</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">log_prob_x</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+
+            <span class="n">logits_mix_prob</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_pad_mixture_dimensions</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_mixture_distribution</span><span class="o">.</span><span class="n">logits</span><span class="p">)</span>
+            <span class="n">log_posterior_weights_x</span> <span class="o">=</span> <span class="n">logits_mix_prob</span> <span class="o">+</span> <span class="n">cumsum_log_prob_x</span>
+
+            <span class="n">component_axis</span> <span class="o">=</span> <span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">_event_ndims</span> <span class="o">-</span> <span class="mi">1</span>
+            <span class="n">cdf_x</span> <span class="o">=</span> <span class="n">univariate_components</span><span class="o">.</span><span class="n">cdf</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+            <span class="n">posterior_weights_x</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">softmax</span><span class="p">(</span><span class="n">log_posterior_weights_x</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">component_axis</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># CDF transformation for one-dimensional events</span>
+            <span class="n">log_posterior_weights_x</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_mixture_distribution</span><span class="o">.</span><span class="n">logits</span>
+            <span class="n">component_axis</span> <span class="o">=</span> <span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">_event_ndims</span> <span class="o">-</span> <span class="mi">1</span>
+            <span class="n">cdf_x</span> <span class="o">=</span> <span class="n">univariate_components</span><span class="o">.</span><span class="n">cdf</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+            <span class="n">posterior_weights_x</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">softmax</span><span class="p">(</span><span class="n">log_posterior_weights_x</span><span class="p">,</span> <span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
+            <span class="n">posterior_weights_x</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_pad_mixture_dimensions</span><span class="p">(</span><span class="n">posterior_weights_x</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">posterior_weights_x</span> <span class="o">*</span> <span class="n">cdf_x</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">component_axis</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_log_cdf</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Computes the logarithm of the cumulative distribution function (CDF) for the mixture distribution.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            x (torch.Tensor): The input tensor for which to compute the log CDF.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            torch.Tensor: The log CDF values.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_pad</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">callable</span><span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_component_distribution</span><span class="p">,</span> <span class="s2">&quot;_log_cdf&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)):</span>
+            <span class="n">log_cdf_x</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_component_distribution</span><span class="o">.</span><span class="n">_log_cdf</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">log_cdf_x</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_component_distribution</span><span class="o">.</span><span class="n">cdf</span><span class="p">(</span><span class="n">x</span><span class="p">))</span>
+
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_component_distribution</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">discrete_distributions</span><span class="p">)):</span>
+            <span class="n">log_mix_prob</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">sigmoid</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_mixture_distribution</span><span class="o">.</span><span class="n">logits</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">log_mix_prob</span> <span class="o">=</span> <span class="n">F</span><span class="o">.</span><span class="n">log_softmax</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_mixture_distribution</span><span class="o">.</span><span class="n">logits</span><span class="p">,</span> <span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">logsumexp</span><span class="p">(</span><span class="n">log_cdf_x</span> <span class="o">+</span> <span class="n">log_mix_prob</span><span class="p">,</span> <span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span></div>
 </pre></div>
 
            </div>

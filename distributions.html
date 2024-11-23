@@ -64,13 +64,28 @@
 <p class="caption" role="heading"><span class="caption-text">Packages:</span></p>
 <ul class="current">
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Distributions</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="#irt.distributions.Normal"><code class="docutils literal notranslate"><span class="pre">Normal</span></code></a><ul>
-<li class="toctree-l3"><a class="reference internal" href="#irt.distributions.Normal.d_transform_d_z"><code class="docutils literal notranslate"><span class="pre">Normal.d_transform_d_z()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="#irt.distributions.Normal.rsample"><code class="docutils literal notranslate"><span class="pre">Normal.rsample()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="#irt.distributions.Normal.sample"><code class="docutils literal notranslate"><span class="pre">Normal.sample()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="#irt.distributions.Normal.transform"><code class="docutils literal notranslate"><span class="pre">Normal.transform()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#irt.distributions.Beta"><code class="docutils literal notranslate"><span class="pre">Beta</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#irt.distributions.Dirichlet"><code class="docutils literal notranslate"><span class="pre">Dirichlet</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#irt.distributions.Gamma"><code class="docutils literal notranslate"><span class="pre">Gamma</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#irt.distributions.MixtureSameFamily"><code class="docutils literal notranslate"><span class="pre">MixtureSameFamily</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#irt.distributions.MixtureSameFamily.rsample"><code class="docutils literal notranslate"><span class="pre">MixtureSameFamily.rsample()</span></code></a></li>
 </ul>
 </li>
+<li class="toctree-l2"><a class="reference internal" href="#irt.distributions.Normal"><code class="docutils literal notranslate"><span class="pre">Normal</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#irt.distributions.Normal.cdf"><code class="docutils literal notranslate"><span class="pre">Normal.cdf()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#irt.distributions.Normal.entropy"><code class="docutils literal notranslate"><span class="pre">Normal.entropy()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#irt.distributions.Normal.expand"><code class="docutils literal notranslate"><span class="pre">Normal.expand()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#irt.distributions.Normal.icdf"><code class="docutils literal notranslate"><span class="pre">Normal.icdf()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#irt.distributions.Normal.log_prob"><code class="docutils literal notranslate"><span class="pre">Normal.log_prob()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#irt.distributions.Normal.mean"><code class="docutils literal notranslate"><span class="pre">Normal.mean</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#irt.distributions.Normal.mode"><code class="docutils literal notranslate"><span class="pre">Normal.mode</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#irt.distributions.Normal.rsample"><code class="docutils literal notranslate"><span class="pre">Normal.rsample()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#irt.distributions.Normal.sample"><code class="docutils literal notranslate"><span class="pre">Normal.sample()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#irt.distributions.Normal.stddev"><code class="docutils literal notranslate"><span class="pre">Normal.stddev</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#irt.distributions.Normal.variance"><code class="docutils literal notranslate"><span class="pre">Normal.variance</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#irt.distributions.StudentT"><code class="docutils literal notranslate"><span class="pre">StudentT</span></code></a></li>
 </ul>
 </li>
 </ul>
@@ -102,56 +117,222 @@
   <section id="distributions">
 <h1>Distributions<a class="headerlink" href="#distributions" title="Permalink to this heading"></a></h1>
 <span class="target" id="module-irt.distributions"></span><dl class="py class">
+<dt class="sig sig-object py" id="irt.distributions.Beta">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">irt.distributions.</span></span><span class="sig-name descname"><span class="pre">Beta</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/irt/distributions.html#Beta"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#irt.distributions.Beta" title="Permalink to this definition"></a></dt>
+<dd><p>Beta distribution parameterized by <code class="xref py py-attr docutils literal notranslate"><span class="pre">concentration1</span></code> and <code class="xref py py-attr docutils literal notranslate"><span class="pre">concentration0</span></code>.</p>
+<p>Example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="c1"># xdoctest: +IGNORE_WANT(&quot;non-deterministic&quot;)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">m</span> <span class="o">=</span> <span class="n">Beta</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="mf">0.5</span><span class="p">]),</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="mf">0.5</span><span class="p">]))</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">m</span><span class="o">.</span><span class="n">sample</span><span class="p">()</span>  <span class="c1"># Beta distributed with concentration concentration1 and concentration0</span>
+<span class="go">tensor([ 0.1046])</span>
+</pre></div>
+</div>
+<dl class="simple">
+<dt>Args:</dt><dd><dl class="simple">
+<dt>concentration1 (float or Tensor): 1st concentration parameter of the distribution</dt><dd><p>(often referred to as alpha)</p>
+</dd>
+<dt>concentration0 (float or Tensor): 2nd concentration parameter of the distribution</dt><dd><p>(often referred to as beta)</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="irt.distributions.Dirichlet">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">irt.distributions.</span></span><span class="sig-name descname"><span class="pre">Dirichlet</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/irt/distributions.html#Dirichlet"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#irt.distributions.Dirichlet" title="Permalink to this definition"></a></dt>
+<dd><p>Creates a Dirichlet distribution parameterized by concentration <code class="xref py py-attr docutils literal notranslate"><span class="pre">concentration</span></code>.</p>
+<p>Example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="c1"># xdoctest: +IGNORE_WANT(&quot;non-deterministic&quot;)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">m</span> <span class="o">=</span> <span class="n">Dirichlet</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">]))</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">m</span><span class="o">.</span><span class="n">sample</span><span class="p">()</span>  <span class="c1"># Dirichlet distributed with concentration [0.5, 0.5]</span>
+<span class="go">tensor([ 0.1046,  0.8954])</span>
+</pre></div>
+</div>
+<dl class="simple">
+<dt>Args:</dt><dd><dl class="simple">
+<dt>concentration (Tensor): concentration parameter of the distribution</dt><dd><p>(often referred to as alpha)</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="irt.distributions.Gamma">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">irt.distributions.</span></span><span class="sig-name descname"><span class="pre">Gamma</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/irt/distributions.html#Gamma"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#irt.distributions.Gamma" title="Permalink to this definition"></a></dt>
+<dd><p>Creates a Gamma distribution parameterized by shape <code class="xref py py-attr docutils literal notranslate"><span class="pre">concentration</span></code> and <code class="xref py py-attr docutils literal notranslate"><span class="pre">rate</span></code>.</p>
+<p>Example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="c1"># xdoctest: +IGNORE_WANT(&quot;non-deterministic&quot;)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">m</span> <span class="o">=</span> <span class="n">Gamma</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="mf">1.0</span><span class="p">]),</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="mf">1.0</span><span class="p">]))</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">m</span><span class="o">.</span><span class="n">sample</span><span class="p">()</span>  <span class="c1"># Gamma distributed with concentration=1 and rate=1</span>
+<span class="go">tensor([ 0.1046])</span>
+</pre></div>
+</div>
+<dl class="simple">
+<dt>Args:</dt><dd><dl class="simple">
+<dt>concentration (float or Tensor): shape parameter of the distribution</dt><dd><p>(often referred to as alpha)</p>
+</dd>
+<dt>rate (float or Tensor): rate = 1 / scale of the distribution</dt><dd><p>(often referred to as beta)</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="irt.distributions.MixtureSameFamily">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">irt.distributions.</span></span><span class="sig-name descname"><span class="pre">MixtureSameFamily</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/irt/distributions.html#MixtureSameFamily"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#irt.distributions.MixtureSameFamily" title="Permalink to this definition"></a></dt>
+<dd><p>MixtureSameFamily is a class that represents a mixture of distributions
+from the same family, supporting reparameterized sampling for gradient-based optimization.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="irt.distributions.MixtureSameFamily.rsample">
+<span class="sig-name descname"><span class="pre">rsample</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sample_shape</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">torch.Size</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">torch.Size</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">torch.Tensor</span></span></span><a class="reference internal" href="_modules/irt/distributions.html#MixtureSameFamily.rsample"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#irt.distributions.MixtureSameFamily.rsample" title="Permalink to this definition"></a></dt>
+<dd><p>Generates a reparameterized sample from the mixture of distributions.</p>
+<p>This method generates a sample, applies a distributional transformation,
+and computes a surrogate sample to enable gradient flow during optimization.</p>
+<dl class="simple">
+<dt>Args:</dt><dd><p>sample_shape (torch.Size): The shape of the sample to generate.</p>
+</dd>
+<dt>Returns:</dt><dd><p>torch.Tensor: A reparameterized sample with gradients enabled.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
 <dt class="sig sig-object py" id="irt.distributions.Normal">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">irt.distributions.</span></span><span class="sig-name descname"><span class="pre">Normal</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/irt/distributions.html#Normal"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#irt.distributions.Normal" title="Permalink to this definition"></a></dt>
-<dd><dl class="py method">
-<dt class="sig sig-object py" id="irt.distributions.Normal.d_transform_d_z">
-<span class="sig-name descname"><span class="pre">d_transform_d_z</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">torch.Tensor</span></span></span><a class="reference internal" href="_modules/irt/distributions.html#Normal.d_transform_d_z"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#irt.distributions.Normal.d_transform_d_z" title="Permalink to this definition"></a></dt>
-<dd><p>Computes the derivative of the transform function with respect to the input tensor <cite>z</cite>.</p>
+<dd><p>Represents the Normal (Gaussian) distribution with specified mean (loc) and standard deviation (scale).
+Inherits from PyTorch’s ExponentialFamily distribution class.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="irt.distributions.Normal.cdf">
+<span class="sig-name descname"><span class="pre">cdf</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">torch.Tensor</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">torch.Tensor</span></span></span><a class="reference internal" href="_modules/irt/distributions.html#Normal.cdf"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#irt.distributions.Normal.cdf" title="Permalink to this definition"></a></dt>
+<dd><p>Computes the cumulative distribution function (CDF) of the distribution at a given value.</p>
 <dl class="simple">
-<dt>Returns:</dt><dd><p>Tensor: The derivative, which is the reciprocal of the scale. This is used for reparameterization.</p>
+<dt>Args:</dt><dd><p>value (torch.Tensor): The value at which to evaluate the CDF.</p>
+</dd>
+<dt>Returns:</dt><dd><p>torch.Tensor: The probability that a random variable from the distribution is less than or equal to <cite>value</cite>.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="irt.distributions.Normal.entropy">
+<span class="sig-name descname"><span class="pre">entropy</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">torch.Tensor</span></span></span><a class="reference internal" href="_modules/irt/distributions.html#Normal.entropy"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#irt.distributions.Normal.entropy" title="Permalink to this definition"></a></dt>
+<dd><p>Computes the entropy of the distribution.</p>
+<dl class="simple">
+<dt>Returns:</dt><dd><p>torch.Tensor: The entropy of the Normal distribution, which is a measure of uncertainty.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="irt.distributions.Normal.expand">
+<span class="sig-name descname"><span class="pre">expand</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">batch_shape</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">torch.Size</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">_instance</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#irt.distributions.Normal" title="irt.distributions.Normal"><span class="pre">Normal</span></a></span></span><a class="reference internal" href="_modules/irt/distributions.html#Normal.expand"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#irt.distributions.Normal.expand" title="Permalink to this definition"></a></dt>
+<dd><p>Expands the distribution parameters to a new batch shape.</p>
+<dl class="simple">
+<dt>Args:</dt><dd><p>batch_shape (torch.Size): Desired batch size for the expanded distribution.
+_instance (Optional): Instance to check for validity.</p>
+</dd>
+<dt>Returns:</dt><dd><p>Normal: A new Normal distribution with parameters expanded to the specified batch shape.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="irt.distributions.Normal.icdf">
+<span class="sig-name descname"><span class="pre">icdf</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">torch.Tensor</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">torch.Tensor</span></span></span><a class="reference internal" href="_modules/irt/distributions.html#Normal.icdf"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#irt.distributions.Normal.icdf" title="Permalink to this definition"></a></dt>
+<dd><p>Computes the inverse cumulative distribution function (quantile function) at a given value.</p>
+<dl class="simple">
+<dt>Args:</dt><dd><p>value (torch.Tensor): The probability value at which to evaluate the inverse CDF.</p>
+</dd>
+<dt>Returns:</dt><dd><p>torch.Tensor: The quantile corresponding to <cite>value</cite>.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="irt.distributions.Normal.log_prob">
+<span class="sig-name descname"><span class="pre">log_prob</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">torch.Tensor</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">torch.Tensor</span></span></span><a class="reference internal" href="_modules/irt/distributions.html#Normal.log_prob"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#irt.distributions.Normal.log_prob" title="Permalink to this definition"></a></dt>
+<dd><p>Computes the log probability density of the distribution at a given value.</p>
+<dl class="simple">
+<dt>Args:</dt><dd><p>value (torch.Tensor): The value at which to evaluate the log probability.</p>
+</dd>
+<dt>Returns:</dt><dd><p>torch.Tensor: The log probability density at <cite>value</cite>.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="irt.distributions.Normal.mean">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">mean</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">torch.Tensor</span></em><a class="headerlink" href="#irt.distributions.Normal.mean" title="Permalink to this definition"></a></dt>
+<dd><p>Returns the mean of the distribution.</p>
+<dl class="simple">
+<dt>Returns:</dt><dd><p>torch.Tensor: The mean (location) parameter <cite>loc</cite>.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="irt.distributions.Normal.mode">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">mode</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">torch.Tensor</span></em><a class="headerlink" href="#irt.distributions.Normal.mode" title="Permalink to this definition"></a></dt>
+<dd><p>Returns the mode of the distribution.</p>
+<dl class="simple">
+<dt>Returns:</dt><dd><p>torch.Tensor: The mode (equal to <cite>loc</cite> in a Normal distribution).</p>
 </dd>
 </dl>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="irt.distributions.Normal.rsample">
-<span class="sig-name descname"><span class="pre">rsample</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">torch.Tensor</span></span></span><a class="reference internal" href="_modules/irt/distributions.html#Normal.rsample"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#irt.distributions.Normal.rsample" title="Permalink to this definition"></a></dt>
-<dd><p>Generates a reparameterized sample from the Normal distribution, which is useful for gradient-based optimization.</p>
-<p>The <cite>rsample</cite> method generates a sample <cite>x</cite>, applies a transformation, and creates a surrogate sample
-that allows gradients to flow through the sampling process.</p>
+<span class="sig-name descname"><span class="pre">rsample</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sample_shape</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">torch.types._size</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">torch.Size</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">torch.Tensor</span></span></span><a class="reference internal" href="_modules/irt/distributions.html#Normal.rsample"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#irt.distributions.Normal.rsample" title="Permalink to this definition"></a></dt>
+<dd><p>Generates a reparameterized sample from the Normal distribution, enabling gradient backpropagation.</p>
 <dl class="simple">
-<dt>Returns:</dt><dd><p>Tensor: A reparameterized sample tensor, which allows gradient backpropagation.</p>
+<dt>Returns:</dt><dd><p>torch.Tensor: A tensor containing a reparameterized sample, useful for gradient-based optimization.</p>
 </dd>
 </dl>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="irt.distributions.Normal.sample">
-<span class="sig-name descname"><span class="pre">sample</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">torch.Tensor</span></span></span><a class="reference internal" href="_modules/irt/distributions.html#Normal.sample"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#irt.distributions.Normal.sample" title="Permalink to this definition"></a></dt>
-<dd><p>Generates a sample from the Normal distribution using PyTorch’s <cite>torch.normal</cite> function.</p>
+<span class="sig-name descname"><span class="pre">sample</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sample_shape</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">torch.Size</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">torch.Size</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">torch.Tensor</span></span></span><a class="reference internal" href="_modules/irt/distributions.html#Normal.sample"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#irt.distributions.Normal.sample" title="Permalink to this definition"></a></dt>
+<dd><p>Generates a sample from the Normal distribution using <cite>torch.normal</cite>.</p>
 <dl class="simple">
-<dt>Returns:</dt><dd><dl class="simple">
-<dt>Tensor: A tensor containing a sample from the distribution. The <cite>detach()</cite> method is used to prevent</dt><dd><p>gradients from being tracked during sampling.</p>
+<dt>Args:</dt><dd><p>sample_shape (torch.Size): Shape of the sample to generate.</p>
 </dd>
-</dl>
+<dt>Returns:</dt><dd><p>torch.Tensor: A tensor with samples from the Normal distribution, detached from the computation graph.</p>
 </dd>
 </dl>
 </dd></dl>
 
-<dl class="py method">
-<dt class="sig sig-object py" id="irt.distributions.Normal.transform">
-<span class="sig-name descname"><span class="pre">transform</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">z</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">torch.Tensor</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">torch.Tensor</span></span></span><a class="reference internal" href="_modules/irt/distributions.html#Normal.transform"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#irt.distributions.Normal.transform" title="Permalink to this definition"></a></dt>
-<dd><p>Transforms the input tensor <cite>z</cite> to the standard normal form using the distribution’s mean and scale.</p>
+<dl class="py property">
+<dt class="sig sig-object py" id="irt.distributions.Normal.stddev">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">stddev</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">torch.Tensor</span></em><a class="headerlink" href="#irt.distributions.Normal.stddev" title="Permalink to this definition"></a></dt>
+<dd><p>Returns the standard deviation of the distribution.</p>
 <dl class="simple">
-<dt>Args:</dt><dd><p>z (Tensor): Input tensor to be transformed.</p>
+<dt>Returns:</dt><dd><p>torch.Tensor: The standard deviation (scale) parameter <cite>scale</cite>.</p>
 </dd>
-<dt>Returns:</dt><dd><p>Tensor: The transformed tensor, which is normalized to have mean 0 and standard deviation 1.</p>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="irt.distributions.Normal.variance">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">variance</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">torch.Tensor</span></em><a class="headerlink" href="#irt.distributions.Normal.variance" title="Permalink to this definition"></a></dt>
+<dd><p>Returns the variance of the distribution.</p>
+<dl class="simple">
+<dt>Returns:</dt><dd><p>torch.Tensor: The variance, computed as <cite>scale ** 2</cite>.</p>
 </dd>
 </dl>
 </dd></dl>
 
 </dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="irt.distributions.StudentT">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">irt.distributions.</span></span><span class="sig-name descname"><span class="pre">StudentT</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/irt/distributions.html#StudentT"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#irt.distributions.StudentT" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
 
 </section>
 
