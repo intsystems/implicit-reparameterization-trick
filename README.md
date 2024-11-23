@@ -15,7 +15,9 @@
     </tr>
 </table>
 
-![example workflow](https://github.com/intsystems/implicit-reparameterization-trick/actions/workflows/testnig.yml/badge.svg)
+![Testing](https://github.com/intsystems/implicit-reparameterization-trick/actions/workflows/testing.yml/badge.svg)
+![Docs](https://github.com/intsystems/implicit-reparameterization-trick/actions/workflows/docs.yml/badge.svg)
+
 
 ## Description
 
