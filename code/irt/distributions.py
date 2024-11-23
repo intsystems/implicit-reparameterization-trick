@@ -374,7 +374,7 @@ class Gamma(ExponentialFamily):
         ### BUT we MUST do it in more efficient way and the most efficient way is to use C++ implementation from Torch.###
         ##################################################################################################################
         value = torch._standard_gamma(self.concentration)/rate.detach()
-        u = value.detach() * rate
+        u = value.detach() * rate.detach() / rate
         value = value + (u - u.detach())
         
         value.detach().clamp_(
