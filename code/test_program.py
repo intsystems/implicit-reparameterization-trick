@@ -1,9 +1,6 @@
 import unittest
 import math
 import torch
-from torch.distributions import constraints
-from torch.distributions.exp_family import ExponentialFamily
-from numbers import Number
 from irt.distributions import Normal, Gamma
 
 

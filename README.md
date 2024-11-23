@@ -15,6 +15,8 @@
     </tr>
 </table>
 
+![example workflow](https://github.com/intsystems/implicit-reparameterization-trick/actions/workflows/testnig.yml/badge.svg)
+
 ## Description
 
 This repository implements an educational project for the Bayesian Multimodeling course. It implements algorithms for sampling from various distributions, using the implicit reparameterization trick.

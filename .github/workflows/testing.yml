@@ -27,4 +27,4 @@ jobs:
       - name: Test with unittest
         run: |
           cd code
-          python testprogram
+          python test_program.py
