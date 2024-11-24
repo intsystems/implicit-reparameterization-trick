@@ -5,12 +5,19 @@ from typing import Optional, List
 
 import torch
 import torch.nn.functional as F
-from torch.distributions import constraints, Distribution
+from torch.autograd.functional import jacobian
+from torch.distributions import (
+    constraints,
+    Distribution,
+    Bernoulli,
+    Binomial,
+    ContinuousBernoulli,
+    Geometric,
+    NegativeBinomial,
+    RelaxedBernoulli,
+)
 from torch.distributions.exp_family import ExponentialFamily
 from torch.distributions.utils import broadcast_all
-from torch.autograd.functional import jacobian
-from torch.distributions import Distribution, Bernoulli, Binomial
-from torch.distributions import ContinuousBernoulli, Geometric, NegativeBinomial, RelaxedBernoulli
 from torch.types import _size
 
 
@@ -20,10 +27,9 @@ class Beta(ExponentialFamily):
 
     Example::
 
-        >>> # xdoctest: +IGNORE_WANT("non-deterministic")
         >>> m = Beta(torch.tensor([0.5]), torch.tensor([0.5]))
-        >>> m.sample()  # Beta distributed with concentration concentration1 and concentration0
-        tensor([ 0.1046])
+        >>> m.sample()
+        tensor([0.1046])
 
     Args:
         concentration1 (float or Tensor): 1st concentration parameter of the distribution
@@ -39,15 +45,33 @@ class Beta(ExponentialFamily):
     has_rsample = True
 
     def __init__(self, concentration1, concentration0, validate_args=None):
-        #self.df, self.loc, self.scale = broadcast_all(df, loc, scale)
+        """
+        Initializes the Beta distribution with the given concentration parameters.
+
+        Args:
+            concentration1 (Tensor): First concentration parameter (alpha).
+            concentration0 (Tensor): Second concentration parameter (beta).
+            validate_args (bool): If True, validates the distribution's parameters.
+        """
         self.concentration1 = concentration1
         self.concentration0 = concentration0
         self._gamma1 = Gamma(self.concentration1, torch.ones_like(concentration1), validate_args=validate_args)
         self._gamma0 = Gamma(self.concentration0, torch.ones_like(concentration0), validate_args=validate_args)
-        
+        self._dirichlet = Dirichlet(torch.stack([self.concentration1, self.concentration0], -1))
+
         super().__init__(self._gamma0._batch_shape, validate_args=validate_args)
 
     def expand(self, batch_shape, _instance=None):
+        """
+        Expands the Beta distribution to a new batch shape.
+
+        Args:
+            batch_shape (torch.Size): Desired batch shape.
+            _instance (Optional): Instance to validate.
+
+        Returns:
+            Beta: A new Beta distribution instance with expanded parameters.
+        """
         new = self._get_checked_instance(Beta, _instance)
         batch_shape = torch.Size(batch_shape)
         new._gamma1 = self._gamma1.expand(batch_shape)
@@ -58,53 +82,102 @@ class Beta(ExponentialFamily):
 
     @property
     def mean(self):
+        """
+        Computes the mean of the Beta distribution.
+
+        Returns:
+            torch.Tensor: Mean of the distribution.
+        """
         return self.concentration1 / (self.concentration1 + self.concentration0)
 
     @property
     def mode(self):
-        return (self.concentration1 - 1)/(self.concentration1 + self.concentration0 - 2)
+        """
+        Computes the mode of the Beta distribution.
+
+        Returns:
+            torch.Tensor: Mode of the distribution.
+        """
+        return (self.concentration1 - 1) / (self.concentration1 + self.concentration0 - 2)
 
     @property
     def variance(self):
+        """
+        Computes the variance of the Beta distribution.
+
+        Returns:
+            torch.Tensor: Variance of the distribution.
+        """
         total = self.concentration1 + self.concentration0
         return self.concentration1 * self.concentration0 / (total.pow(2) * (total + 1))
 
     def rsample(self, sample_shape: _size = ()) -> torch.Tensor:
+        """
+        Generates a reparameterized sample from the Beta distribution.
+
+        Args:
+            sample_shape (_size): Shape of the sample.
+
+        Returns:
+            torch.Tensor: Sample from the Beta distribution.
+        """
         z1 = self._gamma1.rsample(sample_shape)
         z0 = self._gamma0.rsample(sample_shape)
-        return z1/(z1+z0)
+        return z1 / (z1 + z0)
 
     def log_prob(self, value):
+        """
+        Computes the log probability density of a value under the Beta distribution.
+
+        Args:
+            value (torch.Tensor): Value to evaluate.
+
+        Returns:
+            torch.Tensor: Log probability of the value.
+        """
         if self._validate_args:
             self._validate_sample(value)
         heads_tails = torch.stack([value, 1.0 - value], -1)
         return self._dirichlet.log_prob(heads_tails)
 
     def entropy(self):
+        """
+        Computes the entropy of the Beta distribution.
+
+        Returns:
+            torch.Tensor: Entropy of the distribution.
+        """
         return self._dirichlet.entropy()
 
     @property
     def _natural_params(self):
-        return (self.concentration1, self.concentration0)
+        """
+        Returns the natural parameters of the distribution.
+
+        Returns:
+            Tuple[torch.Tensor, torch.Tensor]: Natural parameters.
+        """
+        return self.concentration1, self.concentration0
 
     def _log_normalizer(self, x, y):
+        """
+        Computes the log normalizer for the natural parameters.
+
+        Args:
+            x (torch.Tensor): Parameter 1.
+            y (torch.Tensor): Parameter 2.
+
+        Returns:
+            torch.Tensor: Log normalizer value.
+        """
         return torch.lgamma(x) + torch.lgamma(y) - torch.lgamma(x + y)
 
-
 class Dirichlet(ExponentialFamily):
-    r"""
-    Creates a Dirichlet distribution parameterized by concentration :attr:`concentration`.
+    """
+    Dirichlet distribution parameterized by a concentration vector.
 
-    Example::
-
-        >>> # xdoctest: +IGNORE_WANT("non-deterministic")
-        >>> m = Dirichlet(torch.tensor([0.5, 0.5]))
-        >>> m.sample()  # Dirichlet distributed with concentration [0.5, 0.5]
-        tensor([ 0.1046,  0.8954])
-
-    Args:
-        concentration (Tensor): concentration parameter of the distribution
-            (often referred to as alpha)
+    The Dirichlet distribution is a multivariate generalization of the Beta distribution. It
+    is commonly used in Bayesian statistics, particularly for modeling proportions.
     """
     arg_constraints = {
         "concentration": constraints.independent(constraints.positive, 1)
@@ -112,8 +185,15 @@ class Dirichlet(ExponentialFamily):
     support = constraints.simplex
     has_rsample = True
 
-    def __init__(self, concentration, validate_args=None):
-        if concentration.dim() < 1:
+    def __init__(self, concentration: torch.Tensor, validate_args: Optional[bool] = None):
+        """
+        Initializes the Dirichlet distribution.
+
+        Args:
+            concentration (torch.Tensor): Positive concentration parameter vector (alpha).
+            validate_args (Optional[bool]): If True, validates the distribution's parameters.
+        """
+        if torch.numel(concentration) < 1:
             raise ValueError(
                 "`concentration` parameter must be at least one-dimensional."
             )
@@ -122,8 +202,110 @@ class Dirichlet(ExponentialFamily):
         batch_shape, event_shape = concentration.shape[:-1], concentration.shape[-1:]
         super().__init__(batch_shape, event_shape, validate_args=validate_args)
 
+    @property
+    def mean(self) -> torch.Tensor:
+        """
+        Computes the mean of the Dirichlet distribution.
 
-    def expand(self, batch_shape, _instance=None):
+        Returns:
+            torch.Tensor: Mean vector, calculated as `concentration / concentration.sum(-1, keepdim=True)`.
+        """
+        return self.concentration / self.concentration.sum(-1, keepdim=True)
+
+    @property
+    def mode(self) -> torch.Tensor:
+        """
+        Computes the mode of the Dirichlet distribution.
+
+        Note:
+            - The mode is defined only when all concentration values are > 1.
+            - For concentrations ≤ 1, the mode vector is clamped to enforce positivity.
+
+        Returns:
+            torch.Tensor: Mode vector.
+        """
+        concentration_minus_one = (self.concentration - 1).clamp(min=0.0)
+        mode = concentration_minus_one / concentration_minus_one.sum(-1, keepdim=True)
+        mask = (self.concentration < 1).all(dim=-1)
+        mode[mask] = F.one_hot(
+            mode[mask].argmax(dim=-1), concentration_minus_one.shape[-1]
+        ).to(mode)
+        return mode
+
+    @property
+    def variance(self) -> torch.Tensor:
+        """
+        Computes the variance of the Dirichlet distribution.
+
+        Returns:
+            torch.Tensor: Variance vector for each component.
+        """
+        total_concentration = self.concentration.sum(-1, keepdim=True)
+        return (
+            self.concentration
+            * (total_concentration - self.concentration)
+            / (total_concentration.pow(2) * (total_concentration + 1))
+        )
+
+    def rsample(self, sample_shape: _size = ()) -> torch.Tensor:
+        """
+        Generates a reparameterized sample from the Dirichlet distribution.
+
+        Args:
+            sample_shape (_size): Desired sample shape.
+
+        Returns:
+            torch.Tensor: A reparameterized sample.
+        """
+        z = self.gamma.rsample(sample_shape)  # Sample from underlying Gamma distribution
+        
+        return z/torch.sum(z, dim=-1, keepdims=True)
+
+    def log_prob(self, value: torch.Tensor) -> torch.Tensor:
+        """
+        Computes the log probability density for a given value.
+
+        Args:
+            value (torch.Tensor): Value to evaluate the log probability at.
+
+        Returns:
+            torch.Tensor: Log probability density of the value.
+        """
+        if self._validate_args:
+            self._validate_sample(value)
+        return (
+            torch.xlogy(self.concentration - 1.0, value).sum(-1)
+            + torch.lgamma(self.concentration.sum(-1))
+            - torch.lgamma(self.concentration).sum(-1)
+        )
+
+    def entropy(self) -> torch.Tensor:
+        """
+        Computes the entropy of the Dirichlet distribution.
+
+        Returns:
+            torch.Tensor: Entropy of the distribution.
+        """
+        k = self.concentration.size(-1)
+        total_concentration = self.concentration.sum(-1)
+        return (
+            torch.lgamma(self.concentration).sum(-1)
+            - torch.lgamma(total_concentration)
+            - (k - total_concentration) * torch.digamma(total_concentration)
+            - ((self.concentration - 1.0) * torch.digamma(self.concentration)).sum(-1)
+        )
+
+    def expand(self, batch_shape: torch.Size, _instance=None) -> "Dirichlet":
+        """
+        Expands the distribution parameters to a new batch shape.
+
+        Args:
+            batch_shape (torch.Size): Desired batch shape.
+            _instance (Optional): Instance to validate.
+
+        Returns:
+            Dirichlet: A new Dirichlet distribution instance with expanded parameters.
+        """
         new = self._get_checked_instance(Dirichlet, _instance)
         batch_shape = torch.Size(batch_shape)
         new.concentration = self.concentration.expand(batch_shape + self.event_shape)
@@ -133,72 +315,36 @@ class Dirichlet(ExponentialFamily):
         new._validate_args = self._validate_args
         return new
 
-
-    def rsample(self, sample_shape: _size = ()) -> torch.Tensor:
-        z = self.gamma.rsample(sample_shape)
-        if len(self.batch_shape) == 0 or len(sample_shape) == 0:
-            dim = 0
-        else:
-            dim = tuple(range(1, z.dim()))
-        
-        return z*torch.exp(-torch.sum(z, dim=dim))
-
-
-    def log_prob(self, value):
-        if self._validate_args:
-            self._validate_sample(value)
-        return (
-            torch.xlogy(self.concentration - 1.0, value).sum(-1)
-            + torch.lgamma(self.concentration.sum(-1))
-            - torch.lgamma(self.concentration).sum(-1)
-        )
-
-
     @property
-    def mean(self):
-        return self.concentration / self.concentration.sum(-1, True)
+    def _natural_params(self) -> tuple:
+        """
+        Returns the natural parameters of the distribution.
 
-    @property
-    def mode(self):
-        concentrationm1 = (self.concentration - 1).clamp(min=0.0)
-        mode = concentrationm1 / concentrationm1.sum(-1, True)
-        mask = (self.concentration < 1).all(axis=-1)
-        mode[mask] = torch.nn.functional.one_hot(
-            mode[mask].argmax(axis=-1), concentrationm1.shape[-1]
-        ).to(mode)
-        return mode
-
-    @property
-    def variance(self):
-        con0 = self.concentration.sum(-1, True)
-        return (
-            self.concentration
-            * (con0 - self.concentration)
-            / (con0.pow(2) * (con0 + 1))
-        )
-
-
-    def entropy(self):
-        k = self.concentration.size(-1)
-        a0 = self.concentration.sum(-1)
-        return (
-            torch.lgamma(self.concentration).sum(-1)
-            - torch.lgamma(a0)
-            - (k - a0) * torch.digamma(a0)
-            - ((self.concentration - 1.0) * torch.digamma(self.concentration)).sum(-1)
-        )
-
-
-    @property
-    def _natural_params(self):
+        Returns:
+            tuple: Natural parameter tuple `(concentration,)`.
+        """
         return (self.concentration,)
 
-    def _log_normalizer(self, x):
+    def _log_normalizer(self, x: torch.Tensor) -> torch.Tensor:
+        """
+        Computes the log normalizer for the natural parameters.
+
+        Args:
+            x (torch.Tensor): Natural parameter.
+
+        Returns:
+            torch.Tensor: Log normalizer value.
+        """
         return x.lgamma().sum(-1) - torch.lgamma(x.sum(-1))
 
 
-
 class StudentT(Distribution):
+    """
+    Student's t-distribution parameterized by degrees of freedom (df), location (loc), and scale (scale).
+
+    This distribution is commonly used for robust statistical modeling, particularly when the data
+    may have outliers or heavier tails than a Normal distribution.
+    """
     arg_constraints = {
         "df": constraints.positive,
         "loc": constraints.real,
@@ -207,35 +353,77 @@ class StudentT(Distribution):
     support = constraints.real
     has_rsample = True
 
-    def __init__(self, df, loc=0.0, scale=1.0, validate_args=None):
+    def __init__(self, df: torch.Tensor, loc: float = 0.0, scale: float = 1.0, validate_args: Optional[bool] = None):
+        """
+        Initializes the Student's t-distribution.
+
+        Args:
+            df (torch.Tensor): Degrees of freedom (must be positive).
+            loc (float or torch.Tensor): Location parameter (default: 0.0).
+            scale (float or torch.Tensor): Scale parameter (default: 1.0).
+            validate_args (Optional[bool]): If True, validates distribution parameters.
+        """
         self.df, self.loc, self.scale = broadcast_all(df, loc, scale)
-        self.gamma = Gamma(self.df*0.5, self.df*0.5)
+        self.gamma = Gamma(self.df * 0.5, self.df * 0.5)
         batch_shape = self.df.size()
         super().__init__(batch_shape, validate_args=validate_args)
-        
+
     @property
-    def mean(self):
+    def mean(self) -> torch.Tensor:
+        """
+        Computes the mean of the distribution.
+
+        Note: The mean is undefined when `df <= 1`.
+
+        Returns:
+            torch.Tensor: Mean of the distribution, or NaN for undefined cases.
+        """
         m = self.loc.clone(memory_format=torch.contiguous_format)
-        m[self.df <= 1] = nan
+        m[self.df <= 1] = float('nan')  # Mean is undefined for df <= 1
         return m
 
     @property
-    def mode(self):
+    def mode(self) -> torch.Tensor:
+        """
+        Computes the mode of the distribution.
+
+        Returns:
+            torch.Tensor: Mode of the distribution, which is equal to `loc`.
+        """
         return self.loc
 
     @property
-    def variance(self):
+    def variance(self) -> torch.Tensor:
+        """
+        Computes the variance of the distribution.
+
+        Note:
+            - Variance is infinite for 1 < df <= 2.
+            - Variance is undefined (NaN) for df <= 1.
+
+        Returns:
+            torch.Tensor: Variance of the distribution, or appropriate values for edge cases.
+        """
         m = self.df.clone(memory_format=torch.contiguous_format)
-        m[self.df > 2] = (
-            self.scale[self.df > 2].pow(2)
-            * self.df[self.df > 2]
-            / (self.df[self.df > 2] - 2)
-        )
-        m[(self.df <= 2) & (self.df > 1)] = inf
-        m[self.df <= 1] = nan
+        # Variance for df > 2
+        m[self.df > 2] = (self.scale[self.df > 2].pow(2) * self.df[self.df > 2] / (self.df[self.df > 2] - 2))
+        # Infinite variance for 1 < df <= 2
+        m[(self.df <= 2) & (self.df > 1)] = float('inf')
+        # Undefined variance for df <= 1
+        m[self.df <= 1] = float('nan')
         return m
 
-    def expand(self, batch_shape, _instance=None):
+    def expand(self, batch_shape: torch.Size, _instance=None) -> "StudentT":
+        """
+        Expands the distribution parameters to a new batch shape.
+
+        Args:
+            batch_shape (torch.Size): Desired batch size for the expanded distribution.
+            _instance (Optional): Instance to validate.
+
+        Returns:
+            StudentT: A new StudentT distribution with expanded parameters.
+        """
         new = self._get_checked_instance(StudentT, _instance)
         batch_shape = torch.Size(batch_shape)
         new.df = self.df.expand(batch_shape)
@@ -245,8 +433,16 @@ class StudentT(Distribution):
         new._validate_args = self._validate_args
         return new
 
+    def log_prob(self, value: torch.Tensor) -> torch.Tensor:
+        """
+        Computes the log probability density for a given value.
 
-    def log_prob(self, value):
+        Args:
+            value (torch.Tensor): Value to evaluate the log probability at.
+
+        Returns:
+            torch.Tensor: Log probability density of the given value.
+        """
         if self._validate_args:
             self._validate_sample(value)
         y = (value - self.loc) / self.scale
@@ -259,8 +455,13 @@ class StudentT(Distribution):
         )
         return -0.5 * (self.df + 1.0) * torch.log1p(y**2.0 / self.df) - Z
 
+    def entropy(self) -> torch.Tensor:
+        """
+        Computes the entropy of the Student's t-distribution.
 
-    def entropy(self):
+        Returns:
+            torch.Tensor: Entropy of the distribution.
+        """
         lbeta = (
             torch.lgamma(0.5 * self.df)
             + math.lgamma(0.5)
@@ -277,13 +478,13 @@ class StudentT(Distribution):
 
     def _transform(self, z: torch.Tensor) -> torch.Tensor:
         """
-        Transforms an input tensor `z` to a standardized form based on the mean and scale.
+        Transforms an input tensor `z` to a standardized form based on the location and scale.
 
         Args:
             z (torch.Tensor): Input tensor to transform.
-        
+
         Returns:
-            torch.Tensor: The transformed tensor, representing the standardized normal form.
+            torch.Tensor: Transformed tensor representing the standardized form.
         """
         return (z - self.loc) / self.scale
 
@@ -292,38 +493,36 @@ class StudentT(Distribution):
         Computes the derivative of the transform function with respect to `z`.
 
         Returns:
-            torch.Tensor: The reciprocal of the scale, representing the gradient for reparameterization.
+            torch.Tensor: Reciprocal of the scale, representing the gradient for reparameterization.
         """
         return 1 / self.scale
 
-    def rsample(self, sample_shape: _size = torch.Size()) -> torch.Tensor:        
+    def rsample(self, sample_shape: _size = torch.Size()) -> torch.Tensor:
+        """
+        Generates a reparameterized sample from the Student's t-distribution.
+
+        Args:
+            sample_shape (_size): Shape of the sample.
+
+        Returns:
+            torch.Tensor: Reparameterized sample, enabling gradient tracking.
+        """
         shape = self._extended_shape(sample_shape)
-        
-        sigma = self.gamma.rsample(shape)
+        sigma = self.gamma.rsample(shape)  # Sample from auxiliary Gamma distribution
         x = self.loc.detach() + self.scale.detach() * Normal(0, sigma).rsample(shape)
 
-        transform = self._transform(x.detach())
-        
-        surrogate_x = -transform / self._d_transform_d_z().detach()
-        
+        transform = self._transform(x.detach())  # Standardize the sample
+        surrogate_x = -transform / self._d_transform_d_z().detach()  # Compute surrogate gradient
+
         return x + (surrogate_x - surrogate_x.detach())
 
+
 class Gamma(ExponentialFamily):
-    r"""
-    Creates a Gamma distribution parameterized by shape :attr:`concentration` and :attr:`rate`.
+    """
+    Gamma distribution parameterized by `concentration` (shape) and `rate` (inverse scale).
 
-    Example::
-
-        >>> # xdoctest: +IGNORE_WANT("non-deterministic")
-        >>> m = Gamma(torch.tensor([1.0]), torch.tensor([1.0]))
-        >>> m.sample()  # Gamma distributed with concentration=1 and rate=1
-        tensor([ 0.1046])
-
-    Args:
-        concentration (float or Tensor): shape parameter of the distribution
-            (often referred to as alpha)
-        rate (float or Tensor): rate = 1 / scale of the distribution
-            (often referred to as beta)
+    The Gamma distribution is often used to model the time until an event occurs,
+    and it is a continuous probability distribution defined for non-negative real values.
     """
     arg_constraints = {
         "concentration": constraints.positive,
@@ -333,19 +532,20 @@ class Gamma(ExponentialFamily):
     has_rsample = True
     _mean_carrier_measure = 0
 
-    @property
-    def mean(self):
-        return self.concentration / self.rate
+    def __init__(
+        self,
+        concentration: torch.Tensor,
+        rate: torch.Tensor,
+        validate_args: Optional[bool] = None,
+    ):
+        """
+        Initializes the Gamma distribution.
 
-    @property
-    def mode(self):
-        return ((self.concentration - 1) / self.rate).clamp(min=0)
-
-    @property
-    def variance(self):
-        return self.concentration / self.rate.pow(2)
-
-    def __init__(self, concentration, rate, validate_args=None):
+        Args:
+            concentration (torch.Tensor): Shape parameter of the distribution (often referred to as alpha).
+            rate (torch.Tensor): Rate parameter (inverse of scale, often referred to as beta).
+            validate_args (Optional[bool]): If True, validates the distribution's parameters.
+        """
         self.concentration, self.rate = broadcast_all(concentration, rate)
         if isinstance(concentration, Number) and isinstance(rate, Number):
             batch_shape = torch.Size()
@@ -353,7 +553,51 @@ class Gamma(ExponentialFamily):
             batch_shape = self.concentration.size()
         super().__init__(batch_shape, validate_args=validate_args)
 
-    def expand(self, batch_shape, _instance=None):
+    @property
+    def mean(self) -> torch.Tensor:
+        """
+        Computes the mean of the Gamma distribution.
+
+        Returns:
+            torch.Tensor: Mean of the distribution, calculated as `concentration / rate`.
+        """
+        return self.concentration / self.rate
+
+    @property
+    def mode(self) -> torch.Tensor:
+        """
+        Computes the mode of the Gamma distribution.
+
+        Note:
+            - The mode is defined only for `concentration > 1`. For `concentration <= 1`,
+              the mode is clamped to 0.
+
+        Returns:
+            torch.Tensor: Mode of the distribution.
+        """
+        return ((self.concentration - 1) / self.rate).clamp(min=0)
+
+    @property
+    def variance(self) -> torch.Tensor:
+        """
+        Computes the variance of the Gamma distribution.
+
+        Returns:
+            torch.Tensor: Variance of the distribution, calculated as `concentration / rate^2`.
+        """
+        return self.concentration / self.rate.pow(2)
+
+    def expand(self, batch_shape: torch.Size, _instance=None) -> "Gamma":
+        """
+        Expands the distribution parameters to a new batch shape.
+
+        Args:
+            batch_shape (torch.Size): Desired batch shape.
+            _instance (Optional): Instance to validate.
+
+        Returns:
+            Gamma: A new Gamma distribution instance with expanded parameters.
+        """
         new = self._get_checked_instance(Gamma, _instance)
         batch_shape = torch.Size(batch_shape)
         new.concentration = self.concentration.expand(batch_shape)
@@ -362,28 +606,41 @@ class Gamma(ExponentialFamily):
         new._validate_args = self._validate_args
         return new
 
-
     def rsample(self, sample_shape: _size = torch.Size()) -> torch.Tensor:
+        """
+        Generates a reparameterized sample from the Gamma distribution.
+
+        Args:
+            sample_shape (_size): Shape of the sample.
+
+        Returns:
+            torch.Tensor: A reparameterized sample.
+        """
         shape = self._extended_shape(sample_shape)
         concentration = self.concentration.expand(shape)
         rate = self.rate.expand(shape)
+
+        # Generate a sample using the underlying C++ implementation for efficiency
+        value = torch._standard_gamma(concentration) / rate.detach()
         
-        ##################################################################################################################
-        ### U can think that this method is total shit                                                                 ###
-        ### BUT you MUST calculate for gamma (Of course we can do it, I can give you version of it.)                   ###
-        ### BUT we MUST do it in more efficient way and the most efficient way is to use C++ implementation from Torch.###
-        ##################################################################################################################
-        value = torch._standard_gamma(self.concentration)/rate.detach()
+        # Detach u for surrogate computation
         u = value.detach() * rate.detach() / rate
         value = value + (u - u.detach())
-        
-        value.detach().clamp_(
-            min=torch.finfo(value.dtype).tiny
-        )  # do not record in autograd graph
-        return value 
 
+        # Ensure numerical stability for gradients
+        value.detach().clamp_(min=torch.finfo(value.dtype).tiny)
+        return value
 
-    def log_prob(self, value):
+    def log_prob(self, value: torch.Tensor) -> torch.Tensor:
+        """
+        Computes the log probability density for a given value.
+
+        Args:
+            value (torch.Tensor): Value to evaluate the log probability at.
+
+        Returns:
+            torch.Tensor: Log probability density of the given value.
+        """
         value = torch.as_tensor(value, dtype=self.rate.dtype, device=self.rate.device)
         if self._validate_args:
             self._validate_sample(value)
@@ -394,8 +651,13 @@ class Gamma(ExponentialFamily):
             - torch.lgamma(self.concentration)
         )
 
+    def entropy(self) -> torch.Tensor:
+        """
+        Computes the entropy of the Gamma distribution.
 
-    def entropy(self):
+        Returns:
+            torch.Tensor: Entropy of the distribution.
+        """
         return (
             self.concentration
             - torch.log(self.rate)
@@ -403,18 +665,43 @@ class Gamma(ExponentialFamily):
             + (1.0 - self.concentration) * torch.digamma(self.concentration)
         )
 
-
     @property
-    def _natural_params(self):
-        return (self.concentration - 1, -self.rate)
+    def _natural_params(self) -> tuple:
+        """
+        Returns the natural parameters of the distribution.
 
-    def _log_normalizer(self, x, y):
+        Returns:
+            tuple: Tuple of natural parameters `(concentration - 1, -rate)`.
+        """
+        return self.concentration - 1, -self.rate
+
+    def _log_normalizer(self, x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
+        """
+        Computes the log normalizer for the natural parameters.
+
+        Args:
+            x (torch.Tensor): First natural parameter.
+            y (torch.Tensor): Second natural parameter.
+
+        Returns:
+            torch.Tensor: Log normalizer value.
+        """
         return torch.lgamma(x + 1) + (x + 1) * torch.log(-y.reciprocal())
 
-    def cdf(self, value):
+    def cdf(self, value: torch.Tensor) -> torch.Tensor:
+        """
+        Computes the cumulative distribution function (CDF) for the Gamma distribution.
+
+        Args:
+            value (torch.Tensor): Value to evaluate the CDF at.
+
+        Returns:
+            torch.Tensor: CDF of the given value.
+        """
         if self._validate_args:
             self._validate_sample(value)
         return torch.special.gammainc(self.concentration, self.rate * value)
+
 
 class Normal(ExponentialFamily):
     """
@@ -661,7 +948,7 @@ class MixtureSameFamily(torch.distributions.MixtureSameFamily):
             x_2d = x.reshape((-1, event_size))
             transform_2d = reshaped_dist_trans(x)
             jac = jacobian(reshaped_dist_trans_summed, x_2d).detach().movedim(1, 0)
-            surrogate_x_2d = -torch.linalg.solve_triangular(jac.detach(), transform_2d[..., None])
+            surrogate_x_2d = -torch.linalg.solve_triangular(jac.detach(), transform_2d[..., None], upper=False)
             surrogate_x = surrogate_x_2d.reshape(x.shape)
         else:
             # For one-dimensional events, apply the standard distributional transformation
@@ -732,12 +1019,17 @@ class MixtureSameFamily(torch.distributions.MixtureSameFamily):
             torch.Tensor: The log CDF values.
         """
         x = self._pad(x)
-        if callable(getattr(self._component_distribution, "_log_cdf", None)):
-            log_cdf_x = self._component_distribution._log_cdf(x)
+        if isinstance(self._component_distribution, torch.distributions.Independent):
+            univariate_components = self._component_distribution.base_dist
         else:
-            log_cdf_x = torch.log(self._component_distribution.cdf(x))
+            univariate_components = self._component_distribution
+        
+        if callable(getattr(univariate_components, "_log_cdf", None)):
+            log_cdf_x = univariate_components._log_cdf(x)
+        else:
+            log_cdf_x = torch.log(univariate_components.cdf(x))
 
-        if isinstance(self._component_distribution, tuple(self.discrete_distributions)):
+        if isinstance(univariate_components, tuple(self.discrete_distributions)):
             log_mix_prob = torch.sigmoid(self._mixture_distribution.logits)
         else:
             log_mix_prob = F.log_softmax(self._mixture_distribution.logits, dim=-1)

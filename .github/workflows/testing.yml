@@ -1,4 +1,4 @@
-name: ci-python-unittest
+name: unittest
 
 on:
   pull_request:
@@ -27,4 +27,4 @@ jobs:
       - name: Test with unittest
         run: |
           cd code
-          python test_program.py
+          python run_unittests.py
