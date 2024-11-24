@@ -27,4 +27,4 @@ jobs:
       - name: Test with unittest
         run: |
           cd code
-          python run_unittests.py
+          python run_unittest.py
