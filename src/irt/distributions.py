@@ -505,11 +505,16 @@ class StudentT(Distribution):
             sample_shape (_size): Shape of the sample.
 
         Returns:
-            torch.Tensor: Reparameterized sample, enabling gradient tracking.
+            torch.Tensor: Reparameterized sample, enabling gradient tracking.   
         """
-        shape = self._extended_shape(sample_shape)
-        sigma = self.gamma.rsample(shape)  # Sample from auxiliary Gamma distribution
-        x = self.loc.detach() + self.scale.detach() * Normal(0, sigma).rsample(shape)
+        loc = self.loc.expand(self._extended_shape(sample_shape))
+        scale = self.scale.expand(self._extended_shape(sample_shape))
+
+        # Sample from auxiliary Gamma distribution
+        sigma = self.gamma.rsample(sample_shape)
+
+        # Sample from Normal distribution (shape must match after broadcasting)
+        x = loc + scale * Normal(0, sigma).rsample()
 
         transform = self._transform(x.detach())  # Standardize the sample
         surrogate_x = -transform / self._d_transform_d_z().detach()  # Compute surrogate gradient

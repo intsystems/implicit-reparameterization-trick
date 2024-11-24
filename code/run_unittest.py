@@ -1,7 +1,9 @@
 import unittest
 import math
 import torch
-from irt.distributions import Normal, Gamma, MixtureSameFamily, Beta, Dirichlet
+import sys
+sys.path.append('../src')
+from irt.distributions import Normal, Gamma, MixtureSameFamily, Beta, Dirichlet, StudentT
 from torch.distributions import Categorical, Independent
 
 
@@ -348,6 +350,94 @@ class TestDirichlet(unittest.TestCase):
             Dirichlet(torch.tensor([1.0, -1.0, 3.0])) #Negative Concentration
         with self.assertRaises(ValueError):
             self.dirichlet.log_prob(torch.tensor([0.2, 0.3, 0.6])) #Values don't sum to 1
+
+
+class TestStudentT(unittest.TestCase):
+
+    def setUp(self):
+        self.df = torch.tensor([3.0, 5.0]).requires_grad_(True)
+        self.loc = torch.tensor([1.0, 2.0]).requires_grad_(True)
+        self.scale = torch.tensor([0.5, 1.0]).requires_grad_(True)
+        self.studentt = StudentT(self.df, self.loc, self.scale, validate_args=True)
+
+    def test_init(self):
+        studentt = StudentT(3.0, 1.0, 0.5)
+        self.assertEqual(studentt.df, 3.0)
+        self.assertEqual(studentt.loc, 1.0)
+        self.assertEqual(studentt.scale, 0.5)
+        self.assertEqual(studentt.gamma.concentration, 1.5) #Check Gamma initialization
+        self.assertEqual(studentt.gamma.rate, 1.5)
+
+    def test_properties(self):
+        df = torch.tensor([.3, 2.0])
+        loc = torch.tensor([1.0, 2.0])
+        scale = torch.tensor([0.5, 1.0])
+        studentt = StudentT(df, loc, scale)
+        self.assertTrue(torch.equal(studentt.mode, studentt.loc))
+        # Check mean (undefined for df <= 1)
+        # print(self.studentt.mean[0])
+        self.assertTrue(torch.isnan(studentt.mean[0])) #Testing for nan values
+        self.assertTrue(torch.allclose(studentt.mean[1], studentt.loc[1])) #Mean should be defined for df > 1
+        
+        # Check variance (undefined for df <= 1, infinite for 1 < df <= 2)
+        self.assertTrue(torch.isnan(studentt.variance[0]))
+        self.assertTrue(torch.isinf(studentt.variance[1])) # Should be inf for 1 < df <=2
+        self.assertTrue(torch.allclose(studentt.variance[1], (scale[1].pow(2) * df[1] / (df[1] - 2)))) #Should be defined for df > 2
+
+
+    def test_expand(self):
+        expanded_studentt = self.studentt.expand(torch.Size([2, 2]))
+        self.assertEqual(expanded_studentt.batch_shape, torch.Size([2, 2]))
+        self.assertTrue(torch.equal(expanded_studentt.df, self.df.expand([2, 2])))
+        self.assertTrue(torch.equal(expanded_studentt.loc, self.loc.expand([2, 2])))
+        self.assertTrue(torch.equal(expanded_studentt.scale, self.scale.expand([2, 2])))
+
+
+    def test_log_prob(self):
+        value = torch.tensor([2.0, 3.0])
+        log_prob = self.studentt.log_prob(value)
+        y = (value - self.loc) / self.scale
+        Z = (
+            self.scale.log()
+            + 0.5 * self.df.log()
+            + 0.5 * math.log(math.pi)
+            + torch.lgamma(0.5 * self.df)
+            - torch.lgamma(0.5 * (self.df + 1.0))
+        )
+        expected_log_prob = -0.5 * (self.df + 1.0) * torch.log1p(y**2.0 / self.df) - Z
+        self.assertTrue(torch.allclose(log_prob, expected_log_prob))
+
+
+    def test_entropy(self):
+        entropy = self.studentt.entropy()
+        lbeta = (
+            torch.lgamma(0.5 * self.df)
+            + math.lgamma(0.5)
+            - torch.lgamma(0.5 * (self.df + 1))
+        )
+        expected_entropy = (
+            self.scale.log()
+            + 0.5
+            * (self.df + 1)
+            * (torch.digamma(0.5 * (self.df + 1)) - torch.digamma(0.5 * self.df))
+            + 0.5 * self.df.log()
+            + lbeta
+        )
+        self.assertTrue(torch.allclose(entropy, expected_entropy))
+
+
+    def test_rsample(self):
+        samples = self.studentt.rsample(sample_shape=torch.Size([10]))
+        print(samples.shape)
+        # print(self.studentt.rsample(sample_shape=torch.Size([2])))
+        self.assertEqual(samples.shape, torch.Size([10, 2]))
+        self.assertTrue(samples.requires_grad) # Check that gradients are tracked
+
+    def test_invalid_inputs(self):
+        with self.assertRaises(ValueError):
+            StudentT(torch.tensor([-1.0, 1.0]), self.loc, self.scale)  #Negative df
+        with self.assertRaises(ValueError):
+            self.studentt.log_prob([1, 2])
 
 
 if __name__ == "__main__":
