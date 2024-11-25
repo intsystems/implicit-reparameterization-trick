@@ -9,6 +9,12 @@ extend-ignore =
     N812,
     B010,
     ANN101,
+    D100,
+    D212,
+    ANN002,
+    ANN003,
+    D205,
+    D415
 max-line-length = 120
 max-complexity = 15
 docstring-convention = google
@@ -23,6 +29,7 @@ ignore-names =
     X_train,
     X_control,
     X,
+    Z,
     X_val,
     X_valid,
     X_test,
