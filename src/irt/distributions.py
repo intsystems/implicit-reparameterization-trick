@@ -1,7 +1,7 @@
 # mypy: allow-untyped-defs
 import math
 from numbers import Number, Real
-from typing import List, Optional, Self, Tuple
+from typing import List, Optional, Tuple
 
 import torch
 import torch.nn.functional as F
@@ -63,7 +63,7 @@ class Beta(ExponentialFamily):
 
         super().__init__(self._gamma0._batch_shape, validate_args=validate_args)
 
-    def expand(self, batch_shape: torch.Size, _instance: Optional[Self] = None) -> Self:
+    def expand(self, batch_shape: torch.Size, _instance: Optional["Beta"] = None) -> "Beta":
         """
         Expands the Beta distribution to a new batch shape.
 
@@ -293,7 +293,7 @@ class Dirichlet(ExponentialFamily):
             - ((self.concentration - 1.0) * torch.digamma(self.concentration)).sum(-1)
         )
 
-    def expand(self, batch_shape: torch.Size, _instance: Optional[Self] = None) -> Self:
+    def expand(self, batch_shape: torch.Size, _instance: Optional["Dirichlet"] = None) -> "Dirichlet":
         """
         Expands the distribution parameters to a new batch shape.
 
@@ -412,7 +412,7 @@ class StudentT(Distribution):
         m[self.df <= 1] = float("nan")
         return m
 
-    def expand(self, batch_shape: torch.Size, _instance: Optional[Self] = None) -> Self:
+    def expand(self, batch_shape: torch.Size, _instance: Optional["StudentT"] = None) -> "StudentT":
         """
         Expands the distribution parameters to a new batch shape.
 
@@ -585,7 +585,7 @@ class Gamma(ExponentialFamily):
         """
         return self.concentration / self.rate.pow(2)
 
-    def expand(self, batch_shape: torch.Size, _instance: Optional[Self] = None) -> Self:
+    def expand(self, batch_shape: torch.Size, _instance: Optional["Gamma"] = None) -> "Gamma":
         """
         Expands the distribution parameters to a new batch shape.
 
@@ -791,7 +791,7 @@ class Normal(ExponentialFamily):
         """
         return 0.5 * (1 + torch.erf((value - self.loc) / (self.scale * math.sqrt(2))))
 
-    def expand(self, batch_shape: torch.Size, _instance: Optional[Self] = None) -> Self:
+    def expand(self, batch_shape: torch.Size, _instance: Optional["Normal"] = None) -> "Normal":
         """
         Expands the distribution parameters to a new batch shape.
 
