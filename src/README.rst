@@ -15,7 +15,7 @@ Install
 -------
 .. code-block:: bash
 
-	git clone https://github.com/Intelligent-Systems-Phystech/implicit-reparameterization-trick.git /tmp/implicit-reparameterization-trick
+	git clone https://github.com/intsystems/implicit-reparameterization-trick.git /tmp/implicit-reparameterization-trick
 	python3 -m pip install /tmp/implicit-reparameterization-trick/src/
 
 Uninstall
