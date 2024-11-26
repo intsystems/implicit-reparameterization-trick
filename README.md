@@ -1,9 +1,19 @@
-# Implicit Reparametrization Trick
+<div align="center">  
+    <h1> Implicit Reparametrization Trick </h1>
+</div>
 
 <div align="center">  
     <img src="images/implicit.webp" width="500px" />
 </div>
 
+<p align="center">
+    <a href="https://github.com/intsystems/discrete-variables-relaxation/tree/main/tests">
+        <img alt="Coverage_2" src="https://github.com/intsystems/implicit-reparameterization-trick/actions/workflows/testing.yml/badge.svg" />
+    </a>
+    <a href="https://intsystems.github.io/discrete-variables-relaxation">
+        <img alt="Docs" src="https://github.com/intsystems/implicit-reparameterization-trick/actions/workflows/docs.yml/badge.svg" />
+    </a>
+</p>
 
 <table>
     <tr>
@@ -20,16 +30,11 @@
     </tr>
 </table>
 
-
-![Testing](https://github.com/intsystems/implicit-reparameterization-trick/actions/workflows/testing.yml/badge.svg)
-![Docs](https://github.com/intsystems/implicit-reparameterization-trick/actions/workflows/docs.yml/badge.svg)
-
-
-## Description
+## 💡 Description
 
 This repository implements an educational project for the Bayesian Multimodeling course. It implements algorithms for sampling from various distributions, using the implicit reparameterization trick.
 
-## Scope
+## 🗃 Scope
 We plan to implement the following distributions in our library:
 - [x] Gaussian normal distribution (*)
 - [x] Dirichlet distribution (Beta distributions)(\*)
@@ -44,11 +49,11 @@ We plan to implement the following distributions in our library:
 
 (\*\*\*) - this distribution is not very clear in implementation, its inclusion is questionable
 
-## Stack
+## 📚 Stack
 
 We plan to inherit from the torch.distribution.Distribution class, so we need to implement all the methods that are present in that class.
 
-##  Usage
+## 👨‍💻 Usage
 In this example, we demonstrate the application of our library using a Variational Autoencoder (VAE) model, where the latent layer is modified by a normal distribution.
 ```
 >>> import torch.distributions.implicit as irt
@@ -66,7 +71,7 @@ In this example, we demonstrate the use of a mixture of distributions using our 
 >>> outputs = Decoder(deviated)
 ```
 
-## Links
+## 📬 Links
 - [LinkReview](https://github.com/intsystems/implitic-reparametrization-trick/blob/main/linkreview.md)
 - [Plan of project](https://github.com/intsystems/implitic-reparametrization-trick/blob/main/planning.md)
 - [BlogPost](blogpost/Blog_post_sketch.pdf)
