@@ -108,8 +108,9 @@
     <span class="n">constraints</span><span class="p">,</span>
 <span class="p">)</span>
 <span class="kn">from</span> <span class="nn">torch.distributions.exp_family</span> <span class="kn">import</span> <span class="n">ExponentialFamily</span>
-<span class="kn">from</span> <span class="nn">torch.distributions.utils</span> <span class="kn">import</span> <span class="n">broadcast_all</span>
+<span class="kn">from</span> <span class="nn">torch.distributions.utils</span> <span class="kn">import</span> <span class="n">broadcast_all</span><span class="p">,</span> <span class="n">lazy_property</span>
 <span class="kn">from</span> <span class="nn">torch.types</span> <span class="kn">import</span> <span class="n">_size</span>
+<span class="kn">from</span> <span class="nn">torch.distributions.distribution</span> <span class="kn">import</span> <span class="n">Distribution</span>
 
 <span class="n">default_size</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">Size</span><span class="p">()</span>
 
@@ -1126,6 +1127,438 @@
             <span class="n">log_mix_prob</span> <span class="o">=</span> <span class="n">F</span><span class="o">.</span><span class="n">log_softmax</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_mixture_distribution</span><span class="o">.</span><span class="n">logits</span><span class="p">,</span> <span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
 
         <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">logsumexp</span><span class="p">(</span><span class="n">log_cdf_x</span> <span class="o">+</span> <span class="n">log_mix_prob</span><span class="p">,</span> <span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span></div>
+
+
+<span class="k">def</span> <span class="nf">_eval_poly</span><span class="p">(</span><span class="n">y</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">coef</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Evaluate a polynomial at given points.</span>
+<span class="sd">    </span>
+<span class="sd">    Args:</span>
+<span class="sd">        y: Input tensor.</span>
+<span class="sd">        coeffs: Polynomial coefficients.</span>
+<span class="sd">        </span>
+<span class="sd">    Returns:</span>
+<span class="sd">        Evaluated polynomial tensor.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">coef</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">coef</span><span class="p">)</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="n">coef</span><span class="o">.</span><span class="n">pop</span><span class="p">()</span>
+    <span class="k">while</span> <span class="n">coef</span><span class="p">:</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="n">coef</span><span class="o">.</span><span class="n">pop</span><span class="p">()</span> <span class="o">+</span> <span class="n">y</span> <span class="o">*</span> <span class="n">result</span>
+    <span class="k">return</span> <span class="n">result</span>
+
+
+<span class="n">_I0_COEF_SMALL</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="mf">1.0</span><span class="p">,</span>
+    <span class="mf">3.5156229</span><span class="p">,</span>
+    <span class="mf">3.0899424</span><span class="p">,</span>
+    <span class="mf">1.2067492</span><span class="p">,</span>
+    <span class="mf">0.2659732</span><span class="p">,</span>
+    <span class="mf">0.360768e-1</span><span class="p">,</span>
+    <span class="mf">0.45813e-2</span><span class="p">,</span>
+<span class="p">]</span>
+<span class="n">_I0_COEF_LARGE</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="mf">0.39894228</span><span class="p">,</span>
+    <span class="mf">0.1328592e-1</span><span class="p">,</span>
+    <span class="mf">0.225319e-2</span><span class="p">,</span>
+    <span class="o">-</span><span class="mf">0.157565e-2</span><span class="p">,</span>
+    <span class="mf">0.916281e-2</span><span class="p">,</span>
+    <span class="o">-</span><span class="mf">0.2057706e-1</span><span class="p">,</span>
+    <span class="mf">0.2635537e-1</span><span class="p">,</span>
+    <span class="o">-</span><span class="mf">0.1647633e-1</span><span class="p">,</span>
+    <span class="mf">0.392377e-2</span><span class="p">,</span>
+<span class="p">]</span>
+<span class="n">_I1_COEF_SMALL</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="mf">0.5</span><span class="p">,</span>
+    <span class="mf">0.87890594</span><span class="p">,</span>
+    <span class="mf">0.51498869</span><span class="p">,</span>
+    <span class="mf">0.15084934</span><span class="p">,</span>
+    <span class="mf">0.2658733e-1</span><span class="p">,</span>
+    <span class="mf">0.301532e-2</span><span class="p">,</span>
+    <span class="mf">0.32411e-3</span><span class="p">,</span>
+<span class="p">]</span>
+<span class="n">_I1_COEF_LARGE</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="mf">0.39894228</span><span class="p">,</span>
+    <span class="o">-</span><span class="mf">0.3988024e-1</span><span class="p">,</span>
+    <span class="o">-</span><span class="mf">0.362018e-2</span><span class="p">,</span>
+    <span class="mf">0.163801e-2</span><span class="p">,</span>
+    <span class="o">-</span><span class="mf">0.1031555e-1</span><span class="p">,</span>
+    <span class="mf">0.2282967e-1</span><span class="p">,</span>
+    <span class="o">-</span><span class="mf">0.2895312e-1</span><span class="p">,</span>
+    <span class="mf">0.1787654e-1</span><span class="p">,</span>
+    <span class="o">-</span><span class="mf">0.420059e-2</span><span class="p">,</span>
+<span class="p">]</span>
+
+<span class="n">_COEF_SMALL</span> <span class="o">=</span> <span class="p">[</span><span class="n">_I0_COEF_SMALL</span><span class="p">,</span> <span class="n">_I1_COEF_SMALL</span><span class="p">]</span>
+<span class="n">_COEF_LARGE</span> <span class="o">=</span> <span class="p">[</span><span class="n">_I0_COEF_LARGE</span><span class="p">,</span> <span class="n">_I1_COEF_LARGE</span><span class="p">]</span>
+
+
+<span class="k">def</span> <span class="nf">_log_modified_bessel_fn</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">order</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Compute the logarithm of the modified Bessel function of the first kind.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        x: Input tensor, must be positive.</span>
+<span class="sd">        order: Order of the Bessel function (0 or 1).</span>
+<span class="sd">    </span>
+<span class="sd">    Returns:</span>
+<span class="sd">        Logarithm of the Bessel function.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">order</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">{</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">}:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Order must be 0 or 1.&quot;</span><span class="p">)</span>
+
+    <span class="c1"># compute small solution</span>
+    <span class="n">y</span> <span class="o">=</span> <span class="n">x</span> <span class="o">/</span> <span class="mf">3.75</span>
+    <span class="n">y</span> <span class="o">=</span> <span class="n">y</span> <span class="o">*</span> <span class="n">y</span>
+    <span class="n">small</span> <span class="o">=</span> <span class="n">_eval_poly</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="n">_COEF_SMALL</span><span class="p">[</span><span class="n">order</span><span class="p">])</span>
+    <span class="k">if</span> <span class="n">order</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="n">small</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">abs</span><span class="p">()</span> <span class="o">*</span> <span class="n">small</span>
+    <span class="n">small</span> <span class="o">=</span> <span class="n">small</span><span class="o">.</span><span class="n">log</span><span class="p">()</span>
+
+    <span class="c1"># compute large solution</span>
+    <span class="n">y</span> <span class="o">=</span> <span class="mf">3.75</span> <span class="o">/</span> <span class="n">x</span>
+    <span class="n">large</span> <span class="o">=</span> <span class="n">x</span> <span class="o">-</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">x</span><span class="o">.</span><span class="n">log</span><span class="p">()</span> <span class="o">+</span> <span class="n">_eval_poly</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="n">_COEF_LARGE</span><span class="p">[</span><span class="n">order</span><span class="p">])</span><span class="o">.</span><span class="n">log</span><span class="p">()</span>
+
+    <span class="n">result</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">x</span> <span class="o">&lt;</span> <span class="mf">3.75</span><span class="p">,</span> <span class="n">small</span><span class="p">,</span> <span class="n">large</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">result</span>
+
+
+<span class="nd">@torch</span><span class="o">.</span><span class="n">jit</span><span class="o">.</span><span class="n">script_if_tracing</span>
+<span class="k">def</span> <span class="nf">_rejection_sample</span><span class="p">(</span>
+    <span class="n">loc</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> 
+    <span class="n">concentration</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> 
+    <span class="n">proposal_r</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> 
+    <span class="n">x</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Perform rejection sampling for the von Mises distribution.</span>
+<span class="sd">    </span>
+<span class="sd">    Args:</span>
+<span class="sd">        loc: Location parameter.</span>
+<span class="sd">        concentration: Concentration parameter.</span>
+<span class="sd">        proposal_r: Precomputed proposal parameter.</span>
+<span class="sd">        x: Tensor to fill with samples.</span>
+<span class="sd">        </span>
+<span class="sd">    Returns:</span>
+<span class="sd">        Tensor of samples.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">done</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">bool</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">loc</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
+    <span class="k">while</span> <span class="ow">not</span> <span class="n">done</span><span class="o">.</span><span class="n">all</span><span class="p">():</span>
+        <span class="n">u</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">rand</span><span class="p">((</span><span class="mi">3</span><span class="p">,)</span> <span class="o">+</span> <span class="n">x</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">loc</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">loc</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
+        <span class="n">u1</span><span class="p">,</span> <span class="n">u2</span><span class="p">,</span> <span class="n">u3</span> <span class="o">=</span> <span class="n">u</span><span class="o">.</span><span class="n">unbind</span><span class="p">()</span>
+        <span class="n">z</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">math</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="n">u1</span><span class="p">)</span>
+        <span class="n">f</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">proposal_r</span> <span class="o">*</span> <span class="n">z</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">proposal_r</span> <span class="o">+</span> <span class="n">z</span><span class="p">)</span>
+        <span class="n">c</span> <span class="o">=</span> <span class="n">concentration</span> <span class="o">*</span> <span class="p">(</span><span class="n">proposal_r</span> <span class="o">-</span> <span class="n">f</span><span class="p">)</span>
+        <span class="n">accept</span> <span class="o">=</span> <span class="p">((</span><span class="n">c</span> <span class="o">*</span> <span class="p">(</span><span class="mi">2</span> <span class="o">-</span> <span class="n">c</span><span class="p">)</span> <span class="o">-</span> <span class="n">u2</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span> <span class="o">|</span> <span class="p">((</span><span class="n">c</span> <span class="o">/</span> <span class="n">u2</span><span class="p">)</span><span class="o">.</span><span class="n">log</span><span class="p">()</span> <span class="o">+</span> <span class="mi">1</span> <span class="o">-</span> <span class="n">c</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">accept</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
+            <span class="n">x</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">accept</span><span class="p">,</span> <span class="p">(</span><span class="n">u3</span> <span class="o">-</span> <span class="mf">0.5</span><span class="p">)</span><span class="o">.</span><span class="n">sign</span><span class="p">()</span> <span class="o">*</span> <span class="n">f</span><span class="o">.</span><span class="n">acos</span><span class="p">(),</span> <span class="n">x</span><span class="p">)</span>
+            <span class="n">done</span> <span class="o">=</span> <span class="n">done</span> <span class="o">|</span> <span class="n">accept</span>
+    <span class="k">return</span> <span class="p">(</span><span class="n">x</span> <span class="o">+</span> <span class="n">math</span><span class="o">.</span><span class="n">pi</span> <span class="o">+</span> <span class="n">loc</span><span class="p">)</span> <span class="o">%</span> <span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">math</span><span class="o">.</span><span class="n">pi</span><span class="p">)</span> <span class="o">-</span> <span class="n">math</span><span class="o">.</span><span class="n">pi</span>
+
+
+<div class="viewcode-block" id="VonMises"><a class="viewcode-back" href="../../distributions.html#irt.distributions.VonMises">[docs]</a><span class="k">class</span> <span class="nc">VonMises</span><span class="p">(</span><span class="n">Distribution</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Von Mises distribution class for circular data.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">arg_constraints</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">&quot;loc&quot;</span><span class="p">:</span> <span class="n">constraints</span><span class="o">.</span><span class="n">real</span><span class="p">,</span>
+        <span class="s2">&quot;concentration&quot;</span><span class="p">:</span> <span class="n">constraints</span><span class="o">.</span><span class="n">positive</span><span class="p">,</span>
+    <span class="p">}</span>
+    <span class="n">support</span> <span class="o">=</span> <span class="n">constraints</span><span class="o">.</span><span class="n">real</span>
+    <span class="n">has_rsample</span> <span class="o">=</span> <span class="kc">True</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">loc</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span>
+        <span class="n">concentration</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span>
+        <span class="n">validate_args</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">loc</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">concentration</span> <span class="o">=</span> <span class="n">broadcast_all</span><span class="p">(</span><span class="n">loc</span><span class="p">,</span> <span class="n">concentration</span><span class="p">)</span>
+        <span class="n">batch_shape</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">loc</span><span class="o">.</span><span class="n">shape</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">batch_shape</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Size</span><span class="p">(),</span> <span class="n">validate_args</span><span class="p">)</span>
+    
+    <span class="nd">@lazy_property</span>
+    <span class="nd">@torch</span><span class="o">.</span><span class="n">no_grad</span><span class="p">()</span>
+    <span class="k">def</span> <span class="nf">_proposal_r</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Compute the proposal parameter for sampling.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">kappa</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_concentration</span>
+        <span class="n">tau</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">+</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="mi">4</span> <span class="o">*</span> <span class="n">kappa</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">sqrt</span><span class="p">()</span>
+        <span class="n">rho</span> <span class="o">=</span> <span class="p">(</span><span class="n">tau</span> <span class="o">-</span> <span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">tau</span><span class="p">)</span><span class="o">.</span><span class="n">sqrt</span><span class="p">())</span> <span class="o">/</span> <span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">kappa</span><span class="p">)</span>
+        <span class="n">_proposal_r</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">rho</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">rho</span><span class="p">)</span>
+        
+        <span class="c1"># second order Taylor expansion around 0 for small kappa</span>
+        <span class="n">_proposal_r_taylor</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">/</span> <span class="n">kappa</span> <span class="o">+</span> <span class="n">kappa</span>
+        <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">kappa</span> <span class="o">&lt;</span> <span class="mf">1e-5</span><span class="p">,</span> <span class="n">_proposal_r_taylor</span><span class="p">,</span> <span class="n">_proposal_r</span><span class="p">)</span>
+
+<div class="viewcode-block" id="VonMises.log_prob"><a class="viewcode-back" href="../../distributions.html#irt.distributions.VonMises.log_prob">[docs]</a>    <span class="k">def</span> <span class="nf">log_prob</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Compute the log probability of the given value.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            value: Tensor of values.</span>
+<span class="sd">        </span>
+<span class="sd">        Returns:</span>
+<span class="sd">            Tensor of log probabilities.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_validate_args</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_validate_sample</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+        <span class="n">log_prob</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">concentration</span> <span class="o">*</span> <span class="n">torch</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">value</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">loc</span><span class="p">)</span>
+        <span class="n">log_prob</span> <span class="o">=</span> <span class="n">log_prob</span> <span class="o">-</span> <span class="n">math</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">math</span><span class="o">.</span><span class="n">pi</span><span class="p">)</span> <span class="o">-</span> <span class="n">_log_modified_bessel_fn</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">concentration</span><span class="p">,</span> <span class="n">order</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">log_prob</span></div>
+
+    <span class="nd">@lazy_property</span>
+    <span class="k">def</span> <span class="nf">_loc</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">loc</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">double</span><span class="p">)</span>
+
+    <span class="nd">@lazy_property</span>
+    <span class="k">def</span> <span class="nf">_concentration</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">concentration</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">double</span><span class="p">)</span>
+        
+    <span class="nd">@torch</span><span class="o">.</span><span class="n">no_grad</span><span class="p">()</span>
+    <span class="k">def</span> <span class="nf">sample</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sample_shape</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">Size</span><span class="p">()):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        The sampling algorithm for the von Mises distribution is based on the</span>
+<span class="sd">        following paper: D.J. Best and N.I. Fisher, &quot;Efficient simulation of the</span>
+<span class="sd">        von Mises distribution.&quot; Applied Statistics (1979): 152-157.</span>
+
+<span class="sd">        Sampling is always done in double precision internally to avoid a hang</span>
+<span class="sd">        in _rejection_sample() for small values of the concentration, which</span>
+<span class="sd">        starts to happen for single precision around 1e-4 (see issue #88443).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">shape</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_extended_shape</span><span class="p">(</span><span class="n">sample_shape</span><span class="p">)</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="n">shape</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_loc</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">loc</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">_rejection_sample</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_loc</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_concentration</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_proposal_r</span><span class="p">,</span> <span class="n">x</span>
+        <span class="p">)</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">loc</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
+
+<div class="viewcode-block" id="VonMises.rsample"><a class="viewcode-back" href="../../distributions.html#irt.distributions.VonMises.rsample">[docs]</a>    <span class="k">def</span> <span class="nf">rsample</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sample_shape</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">Size</span><span class="p">()):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Generate reparameterized samples from the distribution.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">shape</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_extended_shape</span><span class="p">(</span><span class="n">sample_shape</span><span class="p">)</span>
+        <span class="n">samples</span> <span class="o">=</span> <span class="n">_VonMisesSampler</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">concentration</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_proposal_r</span><span class="p">,</span> <span class="n">shape</span><span class="p">)</span>
+        <span class="n">samples</span> <span class="o">=</span> <span class="n">samples</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">loc</span>
+    
+        <span class="c1"># Map the samples to [-pi, pi].</span>
+        <span class="k">return</span> <span class="n">samples</span> <span class="o">-</span> <span class="mf">2.</span> <span class="o">*</span> <span class="n">torch</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="n">torch</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">samples</span> <span class="o">/</span> <span class="p">(</span><span class="mf">2.</span> <span class="o">*</span> <span class="n">torch</span><span class="o">.</span><span class="n">pi</span><span class="p">))</span></div>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">mean</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Mean of the distribution.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">loc</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">variance</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Variance of the distribution.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="mi">1</span> <span class="o">-</span> <span class="p">(</span>
+            <span class="n">_log_modified_bessel_fn</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">concentration</span><span class="p">,</span> <span class="n">order</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+            <span class="o">-</span> <span class="n">_log_modified_bessel_fn</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">concentration</span><span class="p">,</span> <span class="n">order</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+        <span class="p">)</span><span class="o">.</span><span class="n">exp</span><span class="p">()</span></div>
+
+<span class="nd">@torch</span><span class="o">.</span><span class="n">jit</span><span class="o">.</span><span class="n">script_if_tracing</span>
+<span class="nd">@torch</span><span class="o">.</span><span class="n">no_grad</span><span class="p">()</span>
+<span class="k">def</span> <span class="nf">_rejection_rsample</span><span class="p">(</span><span class="n">concentration</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">proposal_r</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">shape</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Size</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Perform rejection sampling to draw samples from the von Mises distribution.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        concentration (torch.Tensor): Concentration parameter (kappa) of the distribution.</span>
+<span class="sd">        proposal_r (torch.Tensor): Proposal distribution parameter.</span>
+<span class="sd">        shape (torch.Size): Desired shape of the samples.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        torch.Tensor: Samples from the von Mises distribution.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="n">shape</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">concentration</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">concentration</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
+    <span class="n">done</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">bool</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">concentration</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
+    
+    <span class="k">while</span> <span class="ow">not</span> <span class="n">done</span><span class="o">.</span><span class="n">all</span><span class="p">():</span>
+        <span class="n">u</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">rand</span><span class="p">((</span><span class="mi">3</span><span class="p">,)</span> <span class="o">+</span> <span class="n">x</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">concentration</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">concentration</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
+        <span class="n">u1</span><span class="p">,</span> <span class="n">u2</span><span class="p">,</span> <span class="n">u3</span> <span class="o">=</span> <span class="n">u</span><span class="o">.</span><span class="n">unbind</span><span class="p">()</span>
+        <span class="n">z</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">math</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="n">u1</span><span class="p">)</span>
+        <span class="n">f</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">proposal_r</span> <span class="o">*</span> <span class="n">z</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">proposal_r</span> <span class="o">+</span> <span class="n">z</span><span class="p">)</span>
+        <span class="n">c</span> <span class="o">=</span> <span class="n">concentration</span> <span class="o">*</span> <span class="p">(</span><span class="n">proposal_r</span> <span class="o">-</span> <span class="n">f</span><span class="p">)</span>
+        <span class="n">accept</span> <span class="o">=</span> <span class="p">((</span><span class="n">c</span> <span class="o">*</span> <span class="p">(</span><span class="mi">2</span> <span class="o">-</span> <span class="n">c</span><span class="p">)</span> <span class="o">-</span> <span class="n">u2</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span> <span class="o">|</span> <span class="p">((</span><span class="n">c</span> <span class="o">/</span> <span class="n">u2</span><span class="p">)</span><span class="o">.</span><span class="n">log</span><span class="p">()</span> <span class="o">+</span> <span class="mi">1</span> <span class="o">-</span> <span class="n">c</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">accept</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
+            <span class="n">x</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">accept</span><span class="p">,</span> <span class="p">(</span><span class="n">u3</span> <span class="o">-</span> <span class="mf">0.5</span><span class="p">)</span><span class="o">.</span><span class="n">sign</span><span class="p">()</span> <span class="o">*</span> <span class="n">f</span><span class="o">.</span><span class="n">acos</span><span class="p">(),</span> <span class="n">x</span><span class="p">)</span>
+            <span class="n">done</span> <span class="o">=</span> <span class="n">done</span> <span class="o">|</span> <span class="n">accept</span>
+    <span class="k">return</span> <span class="n">x</span>
+
+<div class="viewcode-block" id="cosxm1"><a class="viewcode-back" href="../../distributions.html#irt.distributions.cosxm1">[docs]</a><span class="k">def</span> <span class="nf">cosxm1</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Compute cos(x) - 1 using a numerically stable formula.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        x (torch.Tensor): Input tensor.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        torch.Tensor: Output tensor, `cos(x) - 1`.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="o">-</span><span class="mi">2</span> <span class="o">*</span> <span class="n">torch</span><span class="o">.</span><span class="n">square</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">x</span> <span class="o">/</span> <span class="mf">2.0</span><span class="p">))</span></div>
+
+<span class="k">class</span> <span class="nc">_VonMisesSampler</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">autograd</span><span class="o">.</span><span class="n">Function</span><span class="p">):</span>
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">forward</span><span class="p">(</span>
+        <span class="n">ctx</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">autograd</span><span class="o">.</span><span class="n">function</span><span class="o">.</span><span class="n">FunctionCtx</span><span class="p">,</span>
+        <span class="n">concentration</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span>
+        <span class="n">proposal_r</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span>
+        <span class="n">shape</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Size</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Perform forward sampling using rejection sampling.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            ctx (torch.autograd.function.FunctionCtx): Context object for saving tensors.</span>
+<span class="sd">            concentration (torch.Tensor): Concentration parameter (kappa).</span>
+<span class="sd">            proposal_r (torch.Tensor): Proposal distribution parameter.</span>
+<span class="sd">            shape (torch.Size): Desired shape of the samples.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            torch.Tensor: Samples from the von Mises distribution.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">samples</span> <span class="o">=</span> <span class="n">_rejection_rsample</span><span class="p">(</span><span class="n">concentration</span><span class="p">,</span> <span class="n">proposal_r</span><span class="p">,</span> <span class="n">shape</span><span class="p">)</span>
+        <span class="n">ctx</span><span class="o">.</span><span class="n">save_for_backward</span><span class="p">(</span><span class="n">concentration</span><span class="p">,</span> <span class="n">proposal_r</span><span class="p">,</span> <span class="n">samples</span><span class="p">)</span>
+        
+        <span class="k">return</span> <span class="n">samples</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="nd">@torch</span><span class="o">.</span><span class="n">autograd</span><span class="o">.</span><span class="n">function</span><span class="o">.</span><span class="n">once_differentiable</span>
+    <span class="k">def</span> <span class="nf">backward</span><span class="p">(</span>
+        <span class="n">ctx</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">autograd</span><span class="o">.</span><span class="n">function</span><span class="o">.</span><span class="n">FunctionCtx</span><span class="p">,</span> <span class="n">grad_output</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Compute gradients for backward pass using implicit reparameterization.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            ctx (torch.autograd.function.FunctionCtx): Context object containing saved tensors.</span>
+<span class="sd">            grad_output (torch.Tensor): Gradient of the loss with respect to the output.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Tuple[torch.Tensor, None, None]: Gradients with respect to the input tensors.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">concentration</span><span class="p">,</span> <span class="n">proposal_r</span><span class="p">,</span> <span class="n">samples</span> <span class="o">=</span> <span class="n">ctx</span><span class="o">.</span><span class="n">saved_tensors</span>
+        
+        <span class="n">num_periods</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">samples</span> <span class="o">/</span> <span class="p">(</span><span class="mf">2.</span> <span class="o">*</span> <span class="n">torch</span><span class="o">.</span><span class="n">pi</span><span class="p">))</span>
+        <span class="n">x_mapped</span> <span class="o">=</span> <span class="n">samples</span> <span class="o">-</span> <span class="p">(</span><span class="mf">2.</span> <span class="o">*</span> <span class="n">torch</span><span class="o">.</span><span class="n">pi</span><span class="p">)</span> <span class="o">*</span> <span class="n">num_periods</span>
+        
+        <span class="c1">## Parameters from the paper</span>
+        <span class="n">ck</span> <span class="o">=</span> <span class="mf">10.5</span>
+        <span class="n">num_terms</span> <span class="o">=</span> <span class="mi">20</span>
+        
+        <span class="c1">## Compute series and normal approximation</span>
+        <span class="n">cdf_series</span><span class="p">,</span> <span class="n">dcdf_dconcentration_series</span> <span class="o">=</span> <span class="n">von_mises_cdf_series</span><span class="p">(</span><span class="n">x_mapped</span><span class="p">,</span> <span class="n">concentration</span><span class="p">,</span> <span class="n">num_terms</span><span class="p">)</span>
+        <span class="n">cdf_normal</span><span class="p">,</span> <span class="n">dcdf_dconcentration_normal</span> <span class="o">=</span> <span class="n">von_mises_cdf_normal</span><span class="p">(</span><span class="n">x_mapped</span><span class="p">,</span> <span class="n">concentration</span><span class="p">)</span>
+        <span class="n">use_series</span> <span class="o">=</span> <span class="n">concentration</span> <span class="o">&lt;</span> <span class="n">ck</span>
+        <span class="n">cdf</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">use_series</span><span class="p">,</span> <span class="n">cdf_series</span><span class="p">,</span> <span class="n">cdf_normal</span><span class="p">)</span> <span class="o">+</span> <span class="n">num_periods</span>
+        <span class="n">dcdf_dconcentration</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">use_series</span><span class="p">,</span> <span class="n">dcdf_dconcentration_series</span><span class="p">,</span> <span class="n">dcdf_dconcentration_normal</span><span class="p">)</span>
+        
+        <span class="c1">## Compute CDF gradient terms</span>
+        <span class="n">inv_prob</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">concentration</span> <span class="o">*</span> <span class="n">cosxm1</span><span class="p">(</span><span class="n">samples</span><span class="p">))</span> <span class="o">/</span> <span class="p">(</span>
+            <span class="mi">2</span> <span class="o">*</span> <span class="n">math</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="n">torch</span><span class="o">.</span><span class="n">special</span><span class="o">.</span><span class="n">i0e</span><span class="p">(</span><span class="n">concentration</span><span class="p">)</span>
+        <span class="p">)</span>
+        <span class="n">grad_concentration</span> <span class="o">=</span> <span class="n">grad_output</span><span class="o">*</span><span class="p">(</span><span class="o">-</span><span class="n">dcdf_dconcentration</span> <span class="o">/</span> <span class="n">inv_prob</span><span class="p">)</span>
+        
+        <span class="k">return</span> <span class="n">grad_concentration</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span>
+        
+
+<div class="viewcode-block" id="von_mises_cdf_series"><a class="viewcode-back" href="../../distributions.html#irt.distributions.von_mises_cdf_series">[docs]</a><span class="k">def</span> <span class="nf">von_mises_cdf_series</span><span class="p">(</span>
+    <span class="n">x</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">concentration</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">num_terms</span><span class="p">:</span> <span class="nb">int</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Compute the CDF of the von Mises distribution using a series approximation.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        x (torch.Tensor): Input tensor.</span>
+<span class="sd">        concentration (torch.Tensor): Concentration parameter (kappa).</span>
+<span class="sd">        num_terms (int): Number of terms in the series.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Tuple[torch.Tensor, torch.Tensor]: CDF and its gradient with respect to concentration.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">vn</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+    <span class="n">dvn_dconcentration</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+
+    <span class="n">n</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="n">num_terms</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">x</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">x</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
+    <span class="n">rn</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+    <span class="n">drn_dconcentration</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+
+    <span class="k">while</span> <span class="n">n</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">denominator</span> <span class="o">=</span> <span class="mf">2.</span> <span class="o">*</span> <span class="n">n</span> <span class="o">/</span> <span class="n">concentration</span> <span class="o">+</span> <span class="n">rn</span>
+        <span class="n">ddenominator_dk</span> <span class="o">=</span> <span class="o">-</span><span class="mf">2.</span> <span class="o">*</span> <span class="n">n</span> <span class="o">/</span> <span class="n">concentration</span> <span class="o">**</span> <span class="mi">2</span> <span class="o">+</span> <span class="n">drn_dconcentration</span>
+        <span class="n">rn</span> <span class="o">=</span> <span class="mf">1.</span> <span class="o">/</span> <span class="n">denominator</span>
+        <span class="n">drn_dconcentration</span> <span class="o">=</span> <span class="o">-</span><span class="n">ddenominator_dk</span> <span class="o">/</span> <span class="n">denominator</span> <span class="o">**</span> <span class="mi">2</span>
+
+        <span class="n">multiplier</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">n</span> <span class="o">*</span> <span class="n">x</span><span class="p">)</span> <span class="o">/</span> <span class="n">n</span> <span class="o">+</span> <span class="n">vn</span>
+        <span class="n">vn</span> <span class="o">=</span> <span class="n">rn</span> <span class="o">*</span> <span class="n">multiplier</span>
+        <span class="n">dvn_dconcentration</span> <span class="o">=</span> <span class="p">(</span><span class="n">drn_dconcentration</span> <span class="o">*</span> <span class="n">multiplier</span> <span class="o">+</span> <span class="n">rn</span> <span class="o">*</span> <span class="n">dvn_dconcentration</span><span class="p">)</span>
+        
+        <span class="n">n</span> <span class="o">-=</span> <span class="mi">1</span>
+
+    <span class="n">cdf</span> <span class="o">=</span> <span class="mf">0.5</span> <span class="o">+</span> <span class="n">x</span> <span class="o">/</span> <span class="p">(</span><span class="mf">2.</span> <span class="o">*</span> <span class="n">torch</span><span class="o">.</span><span class="n">pi</span><span class="p">)</span> <span class="o">+</span> <span class="n">vn</span> <span class="o">/</span> <span class="n">torch</span><span class="o">.</span><span class="n">pi</span>
+    <span class="n">dcdf_dconcentration</span> <span class="o">=</span> <span class="n">dvn_dconcentration</span> <span class="o">/</span> <span class="n">torch</span><span class="o">.</span><span class="n">pi</span>
+
+    <span class="n">cdf_clipped</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">clamp</span><span class="p">(</span><span class="n">cdf</span><span class="p">,</span> <span class="mf">0.</span><span class="p">,</span> <span class="mf">1.</span><span class="p">)</span>
+    <span class="n">dcdf_dconcentration</span> <span class="o">*=</span> <span class="p">(</span><span class="n">cdf</span> <span class="o">&gt;=</span> <span class="mf">0.</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">cdf</span> <span class="o">&lt;=</span> <span class="mf">1.</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">cdf_clipped</span><span class="p">,</span> <span class="n">dcdf_dconcentration</span></div>
+    
+<div class="viewcode-block" id="cdf_func"><a class="viewcode-back" href="../../distributions.html#irt.distributions.cdf_func">[docs]</a><span class="k">def</span> <span class="nf">cdf_func</span><span class="p">(</span><span class="n">concentration</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Approximate the CDF of the von Mises distribution.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        concentration (torch.Tensor): Concentration parameter (kappa).</span>
+<span class="sd">        x (torch.Tensor): Input tensor.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        torch.Tensor: Approximate CDF values.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    
+    <span class="c1"># Calculate the z value based on the approximation</span>
+    <span class="n">z</span> <span class="o">=</span> <span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="mf">2.</span> <span class="o">/</span> <span class="n">torch</span><span class="o">.</span><span class="n">pi</span><span class="p">))</span> <span class="o">/</span> <span class="n">torch</span><span class="o">.</span><span class="n">special</span><span class="o">.</span><span class="n">i0e</span><span class="p">(</span><span class="n">concentration</span><span class="p">))</span> <span class="o">*</span> <span class="n">torch</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="mf">0.5</span> <span class="o">*</span> <span class="n">x</span><span class="p">)</span>
+    <span class="c1"># Apply corrections to z to improve the approximation</span>
+    <span class="n">z2</span> <span class="o">=</span> <span class="n">z</span> <span class="o">**</span> <span class="mi">2</span>
+    <span class="n">z3</span> <span class="o">=</span> <span class="n">z2</span> <span class="o">*</span> <span class="n">z</span>
+    <span class="n">z4</span> <span class="o">=</span> <span class="n">z2</span> <span class="o">**</span> <span class="mi">2</span>
+    <span class="n">c</span> <span class="o">=</span> <span class="mf">24.</span> <span class="o">*</span> <span class="n">concentration</span>
+    <span class="n">c1</span> <span class="o">=</span> <span class="mf">56.</span>
+
+    <span class="n">xi</span> <span class="o">=</span> <span class="n">z</span> <span class="o">-</span> <span class="n">z3</span> <span class="o">/</span> <span class="p">(</span>
+        <span class="p">((</span><span class="n">c</span> <span class="o">-</span> <span class="mf">2.</span> <span class="o">*</span> <span class="n">z2</span> <span class="o">-</span> <span class="mf">16.</span><span class="p">)</span> <span class="o">/</span> <span class="mf">3.</span><span class="p">)</span> <span class="o">-</span> 
+        <span class="p">(</span><span class="n">z4</span> <span class="o">+</span> <span class="p">(</span><span class="mf">7.</span> <span class="o">/</span> <span class="mf">4.</span><span class="p">)</span> <span class="o">*</span> <span class="n">z2</span> <span class="o">+</span> <span class="mf">167.</span> <span class="o">/</span> <span class="mf">2.</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">c</span> <span class="o">-</span> <span class="n">c1</span> <span class="o">-</span> <span class="n">z2</span> <span class="o">+</span> <span class="mf">3.</span><span class="p">)</span>
+    <span class="p">)</span> <span class="o">**</span> <span class="mi">2</span>
+
+    <span class="c1"># Use the standard normal distribution for the approximation</span>
+    <span class="n">distrib</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">distributions</span><span class="o">.</span><span class="n">Normal</span><span class="p">(</span>
+        <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="mf">0.</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">x</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">x</span><span class="o">.</span><span class="n">device</span><span class="p">),</span> 
+        <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="mf">1.</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">x</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">x</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
+    <span class="p">)</span>
+    
+    <span class="k">return</span> <span class="n">distrib</span><span class="o">.</span><span class="n">cdf</span><span class="p">(</span><span class="n">xi</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="von_mises_cdf_normal"><a class="viewcode-back" href="../../distributions.html#irt.distributions.von_mises_cdf_normal">[docs]</a><span class="k">def</span> <span class="nf">von_mises_cdf_normal</span><span class="p">(</span>
+    <span class="n">x</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">concentration</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Compute the CDF of the von Mises distribution using a normal approximation.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        x (torch.Tensor): Input tensor.</span>
+<span class="sd">        concentration (torch.Tensor): Concentration parameter (kappa).</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Tuple[torch.Tensor, torch.Tensor]: CDF and its gradient with respect to concentration.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">with</span> <span class="n">torch</span><span class="o">.</span><span class="n">enable_grad</span><span class="p">():</span>
+        <span class="n">concentration_</span> <span class="o">=</span> <span class="n">concentration</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span><span class="o">.</span><span class="n">clone</span><span class="p">()</span><span class="o">.</span><span class="n">requires_grad_</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">cdf</span> <span class="o">=</span> <span class="n">cdf_func</span><span class="p">(</span><span class="n">concentration_</span><span class="p">,</span> <span class="n">x</span><span class="p">)</span>
+        <span class="n">cdf</span><span class="o">.</span><span class="n">backward</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">ones_like</span><span class="p">(</span><span class="n">cdf</span><span class="p">))</span>  <span class="c1"># Compute gradients</span>
+        <span class="n">dcdf_dconcentration</span> <span class="o">=</span> <span class="n">concentration_</span><span class="o">.</span><span class="n">grad</span><span class="o">.</span><span class="n">clone</span><span class="p">()</span>  <span class="c1"># Copy the gradient</span>
+    <span class="c1"># Detach gradients to prevent further autograd tracking</span>
+    <span class="n">concentration_</span><span class="o">.</span><span class="n">grad</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="k">return</span> <span class="n">cdf</span><span class="p">,</span> <span class="n">dcdf_dconcentration</span></div>
 </pre></div>
 
            </div>

@@ -123,6 +123,18 @@
 <li class="toctree-l3"><a class="reference internal" href="#irt.distributions.StudentT.variance"><code class="docutils literal notranslate"><span class="pre">StudentT.variance</span></code></a></li>
 </ul>
 </li>
+<li class="toctree-l2"><a class="reference internal" href="#irt.distributions.VonMises"><code class="docutils literal notranslate"><span class="pre">VonMises</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#irt.distributions.VonMises.log_prob"><code class="docutils literal notranslate"><span class="pre">VonMises.log_prob()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#irt.distributions.VonMises.mean"><code class="docutils literal notranslate"><span class="pre">VonMises.mean</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#irt.distributions.VonMises.rsample"><code class="docutils literal notranslate"><span class="pre">VonMises.rsample()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#irt.distributions.VonMises.sample"><code class="docutils literal notranslate"><span class="pre">VonMises.sample()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#irt.distributions.VonMises.variance"><code class="docutils literal notranslate"><span class="pre">VonMises.variance</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#irt.distributions.cdf_func"><code class="docutils literal notranslate"><span class="pre">cdf_func()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#irt.distributions.cosxm1"><code class="docutils literal notranslate"><span class="pre">cosxm1()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#irt.distributions.von_mises_cdf_normal"><code class="docutils literal notranslate"><span class="pre">von_mises_cdf_normal()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#irt.distributions.von_mises_cdf_series"><code class="docutils literal notranslate"><span class="pre">von_mises_cdf_series()</span></code></a></li>
 </ul>
 </li>
 </ul>
@@ -681,6 +693,105 @@ _instance (Optional): Instance to validate.</p>
 </dl>
 </dd></dl>
 
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="irt.distributions.VonMises">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">irt.distributions.</span></span><span class="sig-name descname"><span class="pre">VonMises</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/irt/distributions.html#VonMises"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#irt.distributions.VonMises" title="Permalink to this definition"></a></dt>
+<dd><p>Von Mises distribution class for circular data.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="irt.distributions.VonMises.log_prob">
+<span class="sig-name descname"><span class="pre">log_prob</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/irt/distributions.html#VonMises.log_prob"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#irt.distributions.VonMises.log_prob" title="Permalink to this definition"></a></dt>
+<dd><p>Compute the log probability of the given value.</p>
+<dl class="simple">
+<dt>Args:</dt><dd><p>value: Tensor of values.</p>
+</dd>
+<dt>Returns:</dt><dd><p>Tensor of log probabilities.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="irt.distributions.VonMises.mean">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">mean</span></span><a class="headerlink" href="#irt.distributions.VonMises.mean" title="Permalink to this definition"></a></dt>
+<dd><p>Mean of the distribution.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="irt.distributions.VonMises.rsample">
+<span class="sig-name descname"><span class="pre">rsample</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sample_shape</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">torch.Size</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/irt/distributions.html#VonMises.rsample"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#irt.distributions.VonMises.rsample" title="Permalink to this definition"></a></dt>
+<dd><p>Generate reparameterized samples from the distribution.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="irt.distributions.VonMises.sample">
+<span class="sig-name descname"><span class="pre">sample</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sample_shape</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">torch.Size</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#irt.distributions.VonMises.sample" title="Permalink to this definition"></a></dt>
+<dd><p>The sampling algorithm for the von Mises distribution is based on the
+following paper: D.J. Best and N.I. Fisher, “Efficient simulation of the
+von Mises distribution.” Applied Statistics (1979): 152-157.</p>
+<p>Sampling is always done in double precision internally to avoid a hang
+in _rejection_sample() for small values of the concentration, which
+starts to happen for single precision around 1e-4 (see issue #88443).</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="irt.distributions.VonMises.variance">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">variance</span></span><a class="headerlink" href="#irt.distributions.VonMises.variance" title="Permalink to this definition"></a></dt>
+<dd><p>Variance of the distribution.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="irt.distributions.cdf_func">
+<span class="sig-prename descclassname"><span class="pre">irt.distributions.</span></span><span class="sig-name descname"><span class="pre">cdf_func</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">concentration</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">torch.Tensor</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">torch.Tensor</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">torch.Tensor</span></span></span><a class="reference internal" href="_modules/irt/distributions.html#cdf_func"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#irt.distributions.cdf_func" title="Permalink to this definition"></a></dt>
+<dd><p>Approximate the CDF of the von Mises distribution.</p>
+<dl class="simple">
+<dt>Args:</dt><dd><p>concentration (torch.Tensor): Concentration parameter (kappa).
+x (torch.Tensor): Input tensor.</p>
+</dd>
+<dt>Returns:</dt><dd><p>torch.Tensor: Approximate CDF values.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="irt.distributions.cosxm1">
+<span class="sig-prename descclassname"><span class="pre">irt.distributions.</span></span><span class="sig-name descname"><span class="pre">cosxm1</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">torch.Tensor</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">torch.Tensor</span></span></span><a class="reference internal" href="_modules/irt/distributions.html#cosxm1"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#irt.distributions.cosxm1" title="Permalink to this definition"></a></dt>
+<dd><p>Compute cos(x) - 1 using a numerically stable formula.</p>
+<dl class="simple">
+<dt>Args:</dt><dd><p>x (torch.Tensor): Input tensor.</p>
+</dd>
+<dt>Returns:</dt><dd><p>torch.Tensor: Output tensor, <cite>cos(x) - 1</cite>.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="irt.distributions.von_mises_cdf_normal">
+<span class="sig-prename descclassname"><span class="pre">irt.distributions.</span></span><span class="sig-name descname"><span class="pre">von_mises_cdf_normal</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">torch.Tensor</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">concentration</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">torch.Tensor</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">torch.Tensor</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">torch.Tensor</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/irt/distributions.html#von_mises_cdf_normal"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#irt.distributions.von_mises_cdf_normal" title="Permalink to this definition"></a></dt>
+<dd><p>Compute the CDF of the von Mises distribution using a normal approximation.</p>
+<dl class="simple">
+<dt>Args:</dt><dd><p>x (torch.Tensor): Input tensor.
+concentration (torch.Tensor): Concentration parameter (kappa).</p>
+</dd>
+<dt>Returns:</dt><dd><p>Tuple[torch.Tensor, torch.Tensor]: CDF and its gradient with respect to concentration.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="irt.distributions.von_mises_cdf_series">
+<span class="sig-prename descclassname"><span class="pre">irt.distributions.</span></span><span class="sig-name descname"><span class="pre">von_mises_cdf_series</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">torch.Tensor</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">concentration</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">torch.Tensor</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_terms</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">torch.Tensor</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">torch.Tensor</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/irt/distributions.html#von_mises_cdf_series"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#irt.distributions.von_mises_cdf_series" title="Permalink to this definition"></a></dt>
+<dd><p>Compute the CDF of the von Mises distribution using a series approximation.</p>
+<dl class="simple">
+<dt>Args:</dt><dd><p>x (torch.Tensor): Input tensor.
+concentration (torch.Tensor): Concentration parameter (kappa).
+num_terms (int): Number of terms in the series.</p>
+</dd>
+<dt>Returns:</dt><dd><p>Tuple[torch.Tensor, torch.Tensor]: CDF and its gradient with respect to concentration.</p>
+</dd>
+</dl>
 </dd></dl>
 
 </section>
