@@ -701,7 +701,7 @@ _instance (Optional): Instance to validate.</p>
 <dd><p>Von Mises distribution class for circular data.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="irt.distributions.VonMises.log_prob">
-<span class="sig-name descname"><span class="pre">log_prob</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/irt/distributions.html#VonMises.log_prob"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#irt.distributions.VonMises.log_prob" title="Permalink to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">log_prob</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">torch.Tensor</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">torch.Tensor</span></span></span><a class="reference internal" href="_modules/irt/distributions.html#VonMises.log_prob"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#irt.distributions.VonMises.log_prob" title="Permalink to this definition"></a></dt>
 <dd><p>Compute the log probability of the given value.</p>
 <dl class="simple">
 <dt>Args:</dt><dd><p>value: Tensor of values.</p>
@@ -713,19 +713,19 @@ _instance (Optional): Instance to validate.</p>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="irt.distributions.VonMises.mean">
-<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">mean</span></span><a class="headerlink" href="#irt.distributions.VonMises.mean" title="Permalink to this definition"></a></dt>
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">mean</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">torch.Tensor</span></em><a class="headerlink" href="#irt.distributions.VonMises.mean" title="Permalink to this definition"></a></dt>
 <dd><p>Mean of the distribution.</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="irt.distributions.VonMises.rsample">
-<span class="sig-name descname"><span class="pre">rsample</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sample_shape</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">torch.Size</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/irt/distributions.html#VonMises.rsample"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#irt.distributions.VonMises.rsample" title="Permalink to this definition"></a></dt>
-<dd><p>Generate reparameterized samples from the distribution.</p>
+<span class="sig-name descname"><span class="pre">rsample</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sample_shape</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">torch.types._size</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">torch.Size</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">torch.Tensor</span></span></span><a class="reference internal" href="_modules/irt/distributions.html#VonMises.rsample"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#irt.distributions.VonMises.rsample" title="Permalink to this definition"></a></dt>
+<dd><p>Generate reparameterized samples from the distribution</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="irt.distributions.VonMises.sample">
-<span class="sig-name descname"><span class="pre">sample</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sample_shape</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">torch.Size</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#irt.distributions.VonMises.sample" title="Permalink to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">sample</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sample_shape</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">torch.types._size</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">torch.Size</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">torch.Tensor</span></span></span><a class="headerlink" href="#irt.distributions.VonMises.sample" title="Permalink to this definition"></a></dt>
 <dd><p>The sampling algorithm for the von Mises distribution is based on the
 following paper: D.J. Best and N.I. Fisher, “Efficient simulation of the
 von Mises distribution.” Applied Statistics (1979): 152-157.</p>
@@ -736,7 +736,7 @@ starts to happen for single precision around 1e-4 (see issue #88443).</p>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="irt.distributions.VonMises.variance">
-<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">variance</span></span><a class="headerlink" href="#irt.distributions.VonMises.variance" title="Permalink to this definition"></a></dt>
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">variance</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">torch.Tensor</span></em><a class="headerlink" href="#irt.distributions.VonMises.variance" title="Permalink to this definition"></a></dt>
 <dd><p>Variance of the distribution.</p>
 </dd></dl>
 
