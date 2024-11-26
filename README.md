@@ -7,10 +7,10 @@
 </div>
 
 <p align="center">
-    <a href="https://github.com/intsystems/discrete-variables-relaxation/tree/main/tests">
+    <a href="">
         <img alt="Coverage_2" src="https://github.com/intsystems/implicit-reparameterization-trick/actions/workflows/testing.yml/badge.svg" />
     </a>
-    <a href="https://intsystems.github.io/discrete-variables-relaxation">
+    <a href="">
         <img alt="Docs" src="https://github.com/intsystems/implicit-reparameterization-trick/actions/workflows/docs.yml/badge.svg" />
     </a>
 </p>
