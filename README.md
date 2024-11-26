@@ -1,9 +1,19 @@
-# Implicit Reparametrization Trick
+<div align="center">  
+    <h1> Implicit Reparametrization Trick </h1>
+</div>
 
 <div align="center">  
     <img src="images/implicit.webp" width="500px" />
 </div>
 
+<p align="center">
+    <a href="https://github.com/intsystems/discrete-variables-relaxation/tree/main/tests">
+        <img alt="Coverage_2" src="https://github.com/intsystems/implicit-reparameterization-trick/actions/workflows/testing.yml/badge.svg" />
+    </a>
+    <a href="https://intsystems.github.io/discrete-variables-relaxation">
+        <img alt="Docs" src="https://github.com/intsystems/implicit-reparameterization-trick/actions/workflows/docs.yml/badge.svg" />
+    </a>
+</p>
 
 <table>
     <tr>
@@ -19,11 +29,6 @@
         <td> Oleg Bakhteev, PhD </td>
     </tr>
 </table>
-
-
-![Testing](https://github.com/intsystems/implicit-reparameterization-trick/actions/workflows/testing.yml/badge.svg)
-![Docs](https://github.com/intsystems/implicit-reparameterization-trick/actions/workflows/docs.yml/badge.svg)
-
 
 ## 💡 Description
 
