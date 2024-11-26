@@ -19,7 +19,6 @@ from torch.distributions import (
 from torch.distributions.exp_family import ExponentialFamily
 from torch.distributions.utils import broadcast_all, lazy_property
 from torch.types import _size
-from torch.distributions.distribution import Distribution
 
 default_size = torch.Size()
 
@@ -1041,11 +1040,11 @@ class MixtureSameFamily(torch.distributions.MixtureSameFamily):
 def _eval_poly(y: torch.Tensor, coef: torch.Tensor) -> torch.Tensor:
     """
     Evaluate a polynomial at given points.
-    
+
     Args:
         y: Input tensor.
         coeffs: Polynomial coefficients.
-        
+
     Returns:
         Evaluated polynomial tensor.
     """
@@ -1108,7 +1107,7 @@ def _log_modified_bessel_fn(x: torch.Tensor, order: int = 0) -> torch.Tensor:
     Args:
         x: Input tensor, must be positive.
         order: Order of the Bessel function (0 or 1).
-    
+
     Returns:
         Logarithm of the Bessel function.
     """
@@ -1133,20 +1132,17 @@ def _log_modified_bessel_fn(x: torch.Tensor, order: int = 0) -> torch.Tensor:
 
 @torch.jit.script_if_tracing
 def _rejection_sample(
-    loc: torch.Tensor, 
-    concentration: torch.Tensor, 
-    proposal_r: torch.Tensor, 
-    x: torch.Tensor
+    loc: torch.Tensor, concentration: torch.Tensor, proposal_r: torch.Tensor, x: torch.Tensor
 ) -> torch.Tensor:
     """
     Perform rejection sampling for the von Mises distribution.
-    
+
     Args:
         loc: Location parameter.
         concentration: Concentration parameter.
         proposal_r: Precomputed proposal parameter.
         x: Tensor to fill with samples.
-        
+
     Returns:
         Tensor of samples.
     """
@@ -1165,9 +1161,7 @@ def _rejection_sample(
 
 
 class VonMises(Distribution):
-    """
-    Von Mises distribution class for circular data.
-    """
+    """Von Mises distribution class for circular data."""
 
     arg_constraints = {
         "loc": constraints.real,
@@ -1181,33 +1175,37 @@ class VonMises(Distribution):
         loc: torch.Tensor,
         concentration: torch.Tensor,
         validate_args: bool = None,
-    ):
+    ) -> None:
+        """
+        Args:
+            loc: loc parameter of the distribution.
+            concentration: concentration parameter of the distribution.
+            validate_args: If True, checks the distribution parameters for validity.
+        """
         self.loc, self.concentration = broadcast_all(loc, concentration)
         batch_shape = self.loc.shape
         super().__init__(batch_shape, torch.Size(), validate_args)
-    
+
     @lazy_property
     @torch.no_grad()
     def _proposal_r(self) -> torch.Tensor:
-        """
-        Compute the proposal parameter for sampling.
-        """
+        """Compute the proposal parameter for sampling."""
         kappa = self._concentration
         tau = 1 + (1 + 4 * kappa**2).sqrt()
         rho = (tau - (2 * tau).sqrt()) / (2 * kappa)
         _proposal_r = (1 + rho**2) / (2 * rho)
-        
+
         # second order Taylor expansion around 0 for small kappa
         _proposal_r_taylor = 1 / kappa + kappa
         return torch.where(kappa < 1e-5, _proposal_r_taylor, _proposal_r)
 
-    def log_prob(self, value):
+    def log_prob(self, value: torch.Tensor) -> torch.Tensor:
         """
         Compute the log probability of the given value.
 
         Args:
             value: Tensor of values.
-        
+
         Returns:
             Tensor of log probabilities.
         """
@@ -1218,15 +1216,15 @@ class VonMises(Distribution):
         return log_prob
 
     @lazy_property
-    def _loc(self):
+    def _loc(self) -> torch.Tensor:
         return self.loc.to(torch.double)
 
     @lazy_property
-    def _concentration(self):
+    def _concentration(self) -> torch.Tensor:
         return self.concentration.to(torch.double)
-        
+
     @torch.no_grad()
-    def sample(self, sample_shape=torch.Size()):
+    def sample(self, sample_shape: _size = default_size) -> torch.Tensor:
         """
         The sampling algorithm for the von Mises distribution is based on the
         following paper: D.J. Best and N.I. Fisher, "Efficient simulation of the
@@ -1238,33 +1236,33 @@ class VonMises(Distribution):
         """
         shape = self._extended_shape(sample_shape)
         x = torch.empty(shape, dtype=self._loc.dtype, device=self.loc.device)
-        return _rejection_sample(
-            self._loc, self._concentration, self._proposal_r, x
-        ).to(self.loc.dtype)
+        return _rejection_sample(self._loc, self._concentration, self._proposal_r, x).to(self.loc.dtype)
 
-    def rsample(self, sample_shape=torch.Size()):
-        """
-        Generate reparameterized samples from the distribution.
-        """
+    def rsample(self, sample_shape: _size = default_size) -> torch.Tensor:
+        """Generate reparameterized samples from the distribution"""
         shape = self._extended_shape(sample_shape)
         samples = _VonMisesSampler.apply(self.concentration, self._proposal_r, shape)
         samples = samples + self.loc
-    
+
         # Map the samples to [-pi, pi].
-        return samples - 2. * torch.pi * torch.round(samples / (2. * torch.pi))
+        return samples - 2.0 * torch.pi * torch.round(samples / (2.0 * torch.pi))
 
     @property
-    def mean(self):
+    def mean(self) -> torch.Tensor:
         """Mean of the distribution."""
         return self.loc
 
     @property
-    def variance(self):
+    def variance(self) -> torch.Tensor:
         """Variance of the distribution."""
-        return 1 - (
-            _log_modified_bessel_fn(self.concentration, order=1)
-            - _log_modified_bessel_fn(self.concentration, order=0)
-        ).exp()
+        return (
+            1
+            - (
+                _log_modified_bessel_fn(self.concentration, order=1)
+                - _log_modified_bessel_fn(self.concentration, order=0)
+            ).exp()
+        )
+
 
 @torch.jit.script_if_tracing
 @torch.no_grad()
@@ -1282,7 +1280,7 @@ def _rejection_rsample(concentration: torch.Tensor, proposal_r: torch.Tensor, sh
     """
     x = torch.empty(shape, dtype=concentration.dtype, device=concentration.device)
     done = torch.zeros(x.shape, dtype=torch.bool, device=concentration.device)
-    
+
     while not done.all():
         u = torch.rand((3,) + x.shape, dtype=concentration.dtype, device=concentration.device)
         u1, u2, u3 = u.unbind()
@@ -1295,6 +1293,7 @@ def _rejection_rsample(concentration: torch.Tensor, proposal_r: torch.Tensor, sh
             done = done | accept
     return x
 
+
 def cosxm1(x: torch.Tensor) -> torch.Tensor:
     """
     Compute cos(x) - 1 using a numerically stable formula.
@@ -1306,6 +1305,7 @@ def cosxm1(x: torch.Tensor) -> torch.Tensor:
         torch.Tensor: Output tensor, `cos(x) - 1`.
     """
     return -2 * torch.square(torch.sin(x / 2.0))
+
 
 class _VonMisesSampler(torch.autograd.Function):
     @staticmethod
@@ -1329,7 +1329,7 @@ class _VonMisesSampler(torch.autograd.Function):
         """
         samples = _rejection_rsample(concentration, proposal_r, shape)
         ctx.save_for_backward(concentration, proposal_r, samples)
-        
+
         return samples
 
     @staticmethod
@@ -1348,29 +1348,27 @@ class _VonMisesSampler(torch.autograd.Function):
             Tuple[torch.Tensor, None, None]: Gradients with respect to the input tensors.
         """
         concentration, proposal_r, samples = ctx.saved_tensors
-        
-        num_periods = torch.round(samples / (2. * torch.pi))
-        x_mapped = samples - (2. * torch.pi) * num_periods
-        
-        ## Parameters from the paper
+
+        num_periods = torch.round(samples / (2.0 * torch.pi))
+        x_mapped = samples - (2.0 * torch.pi) * num_periods
+
+        # Parameters from the paper
         ck = 10.5
         num_terms = 20
-        
-        ## Compute series and normal approximation
+
+        # Compute series and normal approximation
         cdf_series, dcdf_dconcentration_series = von_mises_cdf_series(x_mapped, concentration, num_terms)
         cdf_normal, dcdf_dconcentration_normal = von_mises_cdf_normal(x_mapped, concentration)
         use_series = concentration < ck
-        cdf = torch.where(use_series, cdf_series, cdf_normal) + num_periods
+        # cdf = torch.where(use_series, cdf_series, cdf_normal) + num_periods
         dcdf_dconcentration = torch.where(use_series, dcdf_dconcentration_series, dcdf_dconcentration_normal)
-        
-        ## Compute CDF gradient terms
-        inv_prob = torch.exp(concentration * cosxm1(samples)) / (
-            2 * math.pi * torch.special.i0e(concentration)
-        )
-        grad_concentration = grad_output*(-dcdf_dconcentration / inv_prob)
-        
+
+        # Compute CDF gradient terms
+        inv_prob = torch.exp(concentration * cosxm1(samples)) / (2 * math.pi * torch.special.i0e(concentration))
+        grad_concentration = grad_output * (-dcdf_dconcentration / inv_prob)
+
         return grad_concentration, None, None
-        
+
 
 def von_mises_cdf_series(
     x: torch.Tensor, concentration: torch.Tensor, num_terms: int
@@ -1394,25 +1392,26 @@ def von_mises_cdf_series(
     drn_dconcentration = torch.zeros_like(x)
 
     while n > 0:
-        denominator = 2. * n / concentration + rn
-        ddenominator_dk = -2. * n / concentration ** 2 + drn_dconcentration
-        rn = 1. / denominator
-        drn_dconcentration = -ddenominator_dk / denominator ** 2
+        denominator = 2.0 * n / concentration + rn
+        ddenominator_dk = -2.0 * n / concentration**2 + drn_dconcentration
+        rn = 1.0 / denominator
+        drn_dconcentration = -ddenominator_dk / denominator**2
 
         multiplier = torch.sin(n * x) / n + vn
         vn = rn * multiplier
-        dvn_dconcentration = (drn_dconcentration * multiplier + rn * dvn_dconcentration)
-        
+        dvn_dconcentration = drn_dconcentration * multiplier + rn * dvn_dconcentration
+
         n -= 1
 
-    cdf = 0.5 + x / (2. * torch.pi) + vn / torch.pi
+    cdf = 0.5 + x / (2.0 * torch.pi) + vn / torch.pi
     dcdf_dconcentration = dvn_dconcentration / torch.pi
 
-    cdf_clipped = torch.clamp(cdf, 0., 1.)
-    dcdf_dconcentration *= (cdf >= 0.) & (cdf <= 1.)
+    cdf_clipped = torch.clamp(cdf, 0.0, 1.0)
+    dcdf_dconcentration *= (cdf >= 0.0) & (cdf <= 1.0)
 
     return cdf_clipped, dcdf_dconcentration
-    
+
+
 def cdf_func(concentration: torch.Tensor, x: torch.Tensor) -> torch.Tensor:
     """
     Approximate the CDF of the von Mises distribution.
@@ -1424,32 +1423,26 @@ def cdf_func(concentration: torch.Tensor, x: torch.Tensor) -> torch.Tensor:
     Returns:
         torch.Tensor: Approximate CDF values.
     """
-    
     # Calculate the z value based on the approximation
-    z = (torch.sqrt(torch.tensor(2. / torch.pi)) / torch.special.i0e(concentration)) * torch.sin(0.5 * x)
+    z = (torch.sqrt(torch.tensor(2.0 / torch.pi)) / torch.special.i0e(concentration)) * torch.sin(0.5 * x)
     # Apply corrections to z to improve the approximation
-    z2 = z ** 2
+    z2 = z**2
     z3 = z2 * z
-    z4 = z2 ** 2
-    c = 24. * concentration
-    c1 = 56.
+    z4 = z2**2
+    c = 24.0 * concentration
+    c1 = 56.0
 
-    xi = z - z3 / (
-        ((c - 2. * z2 - 16.) / 3.) - 
-        (z4 + (7. / 4.) * z2 + 167. / 2.) / (c - c1 - z2 + 3.)
-    ) ** 2
+    xi = z - z3 / (((c - 2.0 * z2 - 16.0) / 3.0) - (z4 + (7.0 / 4.0) * z2 + 167.0 / 2.0) / (c - c1 - z2 + 3.0)) ** 2
 
     # Use the standard normal distribution for the approximation
     distrib = torch.distributions.Normal(
-        torch.tensor(0., dtype=x.dtype, device=x.device), 
-        torch.tensor(1., dtype=x.dtype, device=x.device)
+        torch.tensor(0.0, dtype=x.dtype, device=x.device), torch.tensor(1.0, dtype=x.dtype, device=x.device)
     )
-    
+
     return distrib.cdf(xi)
 
-def von_mises_cdf_normal(
-    x: torch.Tensor, concentration: torch.Tensor
-) -> Tuple[torch.Tensor, torch.Tensor]:
+
+def von_mises_cdf_normal(x: torch.Tensor, concentration: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
     """
     Compute the CDF of the von Mises distribution using a normal approximation.
 
