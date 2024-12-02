@@ -505,7 +505,7 @@ class StudentT(Distribution):
         self.loc = self.loc.expand(self._extended_shape(sample_shape))
         self.scale = self.scale.expand(self._extended_shape(sample_shape))
         gamma_samples = Gamma(self.df * 0.5, self.df * 0.5).rsample(sample_shape)
-        normal_samples = Normal(0., 1.).sample(sample_shape)
+        normal_samples = Normal(torch.zeros(gamma_samples.shape), torch.ones(gamma_samples.shape)).sample()
         
         # Sample from Normal distribution (shape must match after broadcasting)
         x = self.loc.detach() + self.scale.detach() * normal_samples * torch.rsqrt(gamma_samples)
