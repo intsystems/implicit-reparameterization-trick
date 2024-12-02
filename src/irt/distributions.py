@@ -366,7 +366,6 @@ class StudentT(Distribution):
             validate_args (Optional[bool]): If True, validates distribution parameters.
         """
         self.df, self.loc, self.scale = broadcast_all(df, loc, scale)
-        self.gamma = Gamma(self.df * 0.5, self.df * 0.5)
         batch_shape = self.df.size()
         super().__init__(batch_shape, validate_args=validate_args)
 
@@ -505,11 +504,11 @@ class StudentT(Distribution):
         """
         self.loc = self.loc.expand(self._extended_shape(sample_shape))
         self.scale = self.scale.expand(self._extended_shape(sample_shape))
-
-        sigma = self.gamma.rsample()
-
+        gamma_samples = Gamma(self.df * 0.5, self.df * 0.5).rsample(sample_shape)
+        normal_samples = Normal(0., 1.).sample(sample_shape)
+        
         # Sample from Normal distribution (shape must match after broadcasting)
-        x = self.loc + self.scale * Normal(0, sigma).rsample(sample_shape)
+        x = self.loc.detach() + self.scale.detach() * normal_samples * torch.rsqrt(gamma_samples)
 
         transform = self._transform(x.detach())  # Standardize the sample
         surrogate_x = -transform / self._d_transform_d_z().detach()  # Compute surrogate gradient
