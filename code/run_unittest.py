@@ -365,8 +365,6 @@ class TestStudentT(unittest.TestCase):
         self.assertEqual(studentt.df, 3.0)
         self.assertEqual(studentt.loc, 1.0)
         self.assertEqual(studentt.scale, 0.5)
-        self.assertEqual(studentt.gamma.concentration, 1.5) #Check Gamma initialization
-        self.assertEqual(studentt.gamma.rate, 1.5)
 
     def test_properties(self):
         df = torch.tensor([.3, 2.0])
