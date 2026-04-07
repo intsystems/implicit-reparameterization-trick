@@ -1,0 +1,142 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 640" width="1280" height="640">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#080c16"/>
+      <stop offset="50%" stop-color="#0d1220"/>
+      <stop offset="100%" stop-color="#150a28"/>
+    </linearGradient>
+
+    <linearGradient id="accentLine" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#ff6b3d" stop-opacity="0"/>
+      <stop offset="25%" stop-color="#ff6b3d"/>
+      <stop offset="75%" stop-color="#f7931e"/>
+      <stop offset="100%" stop-color="#f7931e" stop-opacity="0"/>
+    </linearGradient>
+
+    <linearGradient id="arrowFill" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#ff6b3d"/>
+      <stop offset="100%" stop-color="#ffab40"/>
+    </linearGradient>
+
+    <radialGradient id="glow1" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#4fc3f7" stop-opacity="0.3"/>
+      <stop offset="100%" stop-color="#4fc3f7" stop-opacity="0"/>
+    </radialGradient>
+
+    <radialGradient id="glow2" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#ce93d8" stop-opacity="0.25"/>
+      <stop offset="100%" stop-color="#ce93d8" stop-opacity="0"/>
+    </radialGradient>
+
+    <radialGradient id="glowOrange" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#ff6b3d" stop-opacity="0.18"/>
+      <stop offset="100%" stop-color="#ff6b3d" stop-opacity="0"/>
+    </radialGradient>
+
+    <pattern id="grid" x="0" y="0" width="80" height="80" patternUnits="userSpaceOnUse">
+      <line x1="0" y1="0" x2="0" y2="80" stroke="#ffffff" stroke-width="0.4" opacity="0.08"/>
+      <line x1="0" y1="0" x2="80" y2="0" stroke="#ffffff" stroke-width="0.4" opacity="0.08"/>
+    </pattern>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1280" height="640" fill="url(#bg)"/>
+  <rect width="1280" height="640" fill="url(#grid)"/>
+
+  <!-- Ambient glows -->
+  <ellipse cx="340" cy="360" rx="400" ry="280" fill="url(#glow1)"/>
+  <ellipse cx="960" cy="300" rx="360" ry="260" fill="url(#glow2)"/>
+  <ellipse cx="640" cy="500" rx="440" ry="170" fill="url(#glowOrange)"/>
+
+  <!-- ═══ TOP ACCENT ═══ -->
+  <line x1="0" y1="3" x2="1280" y2="3" stroke="url(#accentLine)" stroke-width="5"/>
+
+  <!-- ═══ MAIN TITLE ═══ -->
+  <text x="640" y="80" font-family="Georgia, 'Times New Roman', serif" font-size="64" fill="#ffffff" text-anchor="middle" letter-spacing="6" font-weight="bold">IMPLICIT</text>
+  <text x="640" y="128" font-family="Georgia, 'Times New Roman', serif" font-size="42" fill="#f0f0f0" text-anchor="middle" letter-spacing="10">REPARAMETERIZATION</text>
+  <text x="640" y="170" font-family="Georgia, 'Times New Roman', serif" font-size="42" fill="#f0f0f0" text-anchor="middle" letter-spacing="10">TRICK</text>
+
+  <line x1="290" y1="95" x2="410" y2="95" stroke="#ffffff" stroke-width="1.2" opacity="0.5"/>
+  <line x1="870" y1="95" x2="990" y2="95" stroke="#ffffff" stroke-width="1.2" opacity="0.5"/>
+
+  <!-- ═══ LEFT: Distribution q_φ(z) ═══ -->
+
+  <path d="M 60 440 Q 130 440 190 418 Q 250 388 295 310 Q 325 250 350 210 Q 375 250 405 310 Q 450 388 510 418 Q 570 440 620 440 Z" fill="#4fc3f7" opacity="0.18"/>
+  <path d="M 60 440 Q 130 440 190 418 Q 250 388 295 310 Q 325 250 350 210 Q 375 250 405 310 Q 450 388 510 418 Q 570 440 620 440" fill="none" stroke="#5cd5ff" stroke-width="4"/>
+  <path d="M 110 440 Q 170 435 225 405 Q 275 365 315 290 Q 340 240 360 275 Q 400 355 440 395 Q 490 435 560 440" fill="none" stroke="#f0a0e0" stroke-width="3" stroke-dasharray="8,5"/>
+  <path d="M 160 440 Q 215 438 265 420 Q 308 400 340 355 Q 355 325 365 355 Q 395 400 435 420 Q 485 438 530 440" fill="none" stroke="#a4e65a" stroke-width="2.5"/>
+
+  <line x1="305" y1="308" x2="305" y2="440" stroke="#5cd5ff" stroke-width="1.5" stroke-dasharray="4,4"/>
+  <line x1="350" y1="210" x2="350" y2="440" stroke="#5cd5ff" stroke-width="1.8" stroke-dasharray="4,4"/>
+  <line x1="395" y1="308" x2="395" y2="440" stroke="#5cd5ff" stroke-width="1.5" stroke-dasharray="4,4"/>
+
+  <circle cx="305" cy="308" r="7" fill="#5cd5ff"/>
+  <circle cx="350" cy="210" r="8" fill="#5cd5ff"/>
+  <circle cx="395" cy="308" r="7" fill="#5cd5ff"/>
+  <circle cx="275" cy="355" r="6" fill="#f0a0e0"/>
+  <circle cx="425" cy="355" r="6" fill="#f0a0e0"/>
+
+  <text x="310" y="195" font-family="Georgia, serif" font-size="32" fill="#5cd5ff" font-style="italic">q</text>
+  <text x="330" y="202" font-family="Georgia, serif" font-size="20" fill="#5cd5ff" font-style="italic">φ</text>
+  <text x="345" y="195" font-family="Georgia, serif" font-size="32" fill="#5cd5ff" font-style="italic">(z)</text>
+
+  <!-- ═══ CENTER: ARROW ═══ -->
+
+  <line x1="622" y1="340" x2="735" y2="340" stroke="url(#arrowFill)" stroke-width="5" stroke-linecap="round"/>
+  <path d="M 732 322 L 758 340 L 732 358 Z" fill="url(#arrowFill)"/>
+  <circle cx="635" cy="340" r="2" fill="#ffffff" opacity="0.4"/>
+  <circle cx="660" cy="340" r="2" fill="#ffffff" opacity="0.3"/>
+  <circle cx="685" cy="340" r="2" fill="#ffffff" opacity="0.4"/>
+  <circle cx="710" cy="340" r="2" fill="#ffffff" opacity="0.3"/>
+  <text x="690" y="310" font-family="'Courier New', monospace" font-size="18" fill="#ffa726" text-anchor="middle" letter-spacing="3" font-weight="bold">IMPLICIT</text>
+  <circle cx="640" cy="370" r="3" fill="#ffa726" opacity="0.7"/>
+  <circle cx="665" cy="365" r="2.5" fill="#ffa726" opacity="0.6"/>
+  <circle cx="690" cy="362" r="3" fill="#ffa726" opacity="0.7"/>
+  <circle cx="715" cy="365" r="2.5" fill="#ffa726" opacity="0.6"/>
+  <circle cx="740" cy="370" r="3" fill="#ffa726" opacity="0.5"/>
+
+  <!-- ═══ RIGHT: Transformed distribution ═══ -->
+
+  <path d="M 770 440 Q 830 438 875 415 Q 930 378 965 295 Q 985 245 1005 220 Q 1025 245 1045 295 Q 1080 378 1135 415 Q 1180 438 1230 440 Z" fill="#4fc3f7" opacity="0.18"/>
+  <path d="M 770 440 Q 830 438 875 415 Q 930 378 965 295 Q 985 245 1005 220 Q 1025 245 1045 295 Q 1080 378 1135 415 Q 1180 438 1230 440" fill="none" stroke="#5cd5ff" stroke-width="4"/>
+
+  <line x1="932" y1="360" x2="914" y2="310" stroke="#ff7043" stroke-width="3.5"/>
+  <polygon points="911,303 900,324 920,316" fill="#ff7043"/>
+  <line x1="1005" y1="228" x2="1005" y2="178" stroke="#ff7043" stroke-width="3.5"/>
+  <polygon points="1005,170 994,190 1016,190" fill="#ff7043"/>
+  <line x1="1078" y1="360" x2="1096" y2="310" stroke="#ff7043" stroke-width="3.5"/>
+  <polygon points="1099,303 1090,316 1110,324" fill="#ff7043"/>
+
+  <text x="1005" y="160" font-family="Georgia, serif" font-size="32" fill="#ff7043" text-anchor="middle">∇</text>
+  <text x="1028" y="168" font-family="Georgia, serif" font-size="20" fill="#ff7043" font-style="italic">φ</text>
+
+  <!-- ═══ BOTTOM ═══ -->
+
+  <text x="640" y="510" font-family="'Courier New', monospace" font-size="17" fill="#cccccc" text-anchor="middle" letter-spacing="3">FIGURNOV ET AL. · ICLR 2019</text>
+
+  <rect x="540" y="530" width="200" height="46" rx="23" fill="#ee4c2c" fill-opacity="0.25" stroke="#ff5722" stroke-width="2.5"/>
+  <text x="640" y="560" font-family="'Courier New', monospace" font-size="20" fill="#ff6e40" text-anchor="middle" letter-spacing="2" font-weight="bold">PyTorch</text>
+
+  <!-- ═══ FORMULA using foreignObject for natural text flow ═══ -->
+  <foreignObject x="30" y="582" width="500" height="50">
+    <div xmlns="http://www.w3.org/1999/xhtml" style="display:inline-flex;align-items:center;gap:2px;font-family:Georgia,serif;font-size:17px;color:rgba(255,255,255,0.7);font-style:italic;">
+      <span style="display:inline-flex;flex-direction:column;align-items:center;line-height:1.1;">
+        <span>∂</span>
+        <span style="width:100%;height:1px;background:rgba(255,255,255,0.7);"></span>
+        <span>∂φ</span>
+      </span>
+      <span>𝔼[f(z)]</span>
+      <span style="font-style:normal;">=</span>
+      <span>𝔼[f′(z)·</span>
+      <span style="display:inline-flex;flex-direction:column;align-items:center;line-height:1.1;">
+        <span>∂z</span>
+        <span style="width:100%;height:1px;background:rgba(255,255,255,0.7);"></span>
+        <span>∂φ</span>
+      </span>
+      <span>]</span>
+    </div>
+  </foreignObject>
+
+  <!-- Bottom accent line -->
+  <line x1="0" y1="637" x2="1280" y2="637" stroke="url(#accentLine)" stroke-width="5"/>
+</svg>

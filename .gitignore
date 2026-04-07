@@ -1,5 +1,7 @@
-installtorchviz
-code/MNIST
-*/__pycache__
-*/*/__pycache__
-*/*.pth
+**/__pycache__/
+**/*.pyc
+**/*.pth
+**/.ipynb_checkpoints/
+tasks/
+data/
+code/vae_demo_executed.ipynb

@@ -10,7 +10,7 @@ def read(file_path):
 
 
 readme = read('README.rst')
-# вычищаем локальные версии из файла requirements (согласно PEP440)
+# Strip local version specifiers from requirements (per PEP 440)
 requirements = '\n'.join(
     re.findall(r'^([^\s^+]+).*$',
                read('requirements.txt'),
@@ -24,7 +24,7 @@ setup(
     license='MIT',
     author='Matvei Kreinin, Maria Nikitina, Petr Babkin, Iryna Zabarianska',
     author_email="kreinin.mv@phystech.edu, nikitina.mariia@phystech.edu, babkin.pk@phystech.edu, akshiira@yandex.ru",
-    description='Implicit Reparametrization Trick',
+    description='Implicit Reparameterization Trick',
     long_description=readme,
     url='https://github.com/intsystems/implicit-reparameterization-trick',
 

@@ -1,34 +1,33 @@
-.. MixtureLib documentation master file, created by
-   sphinx-quickstart on Fri Mar 20 22:58:28 2020.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
+Implicit Reparameterization Trick
+=================================
 
-Welcome to Mixture Lib!
-=======================
+A PyTorch library implementing implicit reparameterization gradients for
+continuous distributions that lack tractable inverse CDFs.
+
+Based on: M. Figurnov, S. Mohamed, A. Mnih,
+*Implicit Reparameterization Gradients*, NeurIPS 2018.
 
 .. toctree::
    :maxdepth: 1
-   :caption: Main Info:
-   
+   :caption: Overview
+
    info.rst
 
 .. toctree::
    :maxdepth: 1
-   :caption: Get Started:
-   
+   :caption: Getting Started
+
    installation.rst
 
-
 .. toctree::
-   :maxdepth: 1
-   :caption: Packages:
+   :maxdepth: 2
+   :caption: API Reference
 
    distributions.rst
 
 
-Indices and tables
-==================
+Indices
+-------
 
 * :ref:`genindex`
 * :ref:`modindex`
-* :ref:`search`

@@ -1,10 +1,75 @@
-import unittest
 import math
-import torch
 import sys
-sys.path.append('../src')
-from irt.distributions import Normal, Gamma, MixtureSameFamily, Beta, Dirichlet, StudentT
+import unittest
+
+import torch
+
+sys.path.append("../src")
 from torch.distributions import Categorical, Independent
+
+from irt.distributions import (
+    Beta,
+    Dirichlet,
+    Gamma,
+    MixtureSameFamily,
+    Normal,
+    StudentT,
+    VonMises,
+)
+
+
+def finite_difference_gradient(make_dist_fn, param, f_fn, eps=1e-3, num_samples=50000):
+    """
+    Estimate d/d(param) E[f(x)] via finite differences.
+
+    Args:
+        make_dist_fn: callable(param_value) -> distribution
+        param: scalar tensor (the parameter to differentiate w.r.t.)
+        f_fn: callable(samples) -> scalar (function of samples to take expectation of)
+        eps: finite difference step size
+        num_samples: number of Monte Carlo samples
+
+    Returns:
+        Finite-difference estimate of the gradient.
+    """
+    val = param.item()
+
+    dist_plus = make_dist_fn(val + eps)
+    dist_minus = make_dist_fn(val - eps)
+
+    torch.manual_seed(0)
+    samples_plus = dist_plus.rsample(torch.Size([num_samples]))
+    torch.manual_seed(0)
+    samples_minus = dist_minus.rsample(torch.Size([num_samples]))
+
+    e_plus = f_fn(samples_plus).mean()
+    e_minus = f_fn(samples_minus).mean()
+
+    return (e_plus - e_minus) / (2 * eps)
+
+
+def implicit_reparam_gradient(dist, param, f_fn, num_samples=50000):
+    """
+    Estimate d/d(param) E[f(x)] via implicit reparameterization.
+
+    Args:
+        dist: distribution with rsample
+        param: tensor with requires_grad=True
+        f_fn: callable(samples) -> tensor
+        num_samples: number of Monte Carlo samples
+
+    Returns:
+        Implicit reparameterization estimate of the gradient.
+    """
+    param.grad = None
+    torch.manual_seed(42)
+    samples = dist.rsample(torch.Size([num_samples]))
+    loss = f_fn(samples).mean()
+    loss.backward()
+    return param.grad.clone()
+
+
+# ==================== Unit Tests ====================
 
 
 class TestNormalDistribution(unittest.TestCase):
@@ -18,7 +83,7 @@ class TestNormalDistribution(unittest.TestCase):
         self.assertEqual(normal.loc, 0.0)
         self.assertEqual(normal.scale, 1.0)
         self.assertEqual(normal.batch_shape, torch.Size())
-        
+
         normal = Normal(torch.tensor([0.0, 1.0]), torch.tensor([1.0, 2.0]))
         self.assertTrue(torch.equal(normal.loc, torch.tensor([0.0, 1.0])))
         self.assertTrue(torch.equal(normal.scale, torch.tensor([1.0, 2.0])))
@@ -63,15 +128,15 @@ class TestNormalDistribution(unittest.TestCase):
 
     def test_sample(self):
         samples = self.normal.sample(sample_shape=torch.Size([100]))
-        self.assertEqual(samples.shape, torch.Size([100, 2]))  # Check shape
+        self.assertEqual(samples.shape, torch.Size([100, 2]))
         emperic_mean = samples.mean(dim=0)
         self.assertTrue((emperic_mean < self.normal.mean + self.normal.scale).all())
         self.assertTrue((self.normal.mean - self.normal.scale < emperic_mean).all())
 
     def test_rsample(self):
         samples = self.normal.rsample(sample_shape=torch.Size([10]))
-        self.assertEqual(samples.shape, torch.Size([10, 2]))  # Check shape
-        self.assertTrue(samples.requires_grad)  # Check gradient tracking
+        self.assertEqual(samples.shape, torch.Size([10, 2]))
+        self.assertTrue(samples.requires_grad)
 
 
 class TestGammaDistribution(unittest.TestCase):
@@ -104,9 +169,8 @@ class TestGammaDistribution(unittest.TestCase):
 
     def test_rsample(self):
         samples = self.gamma.rsample(sample_shape=torch.Size([10]))
-        self.assertEqual(samples.shape, torch.Size([10, 2]))  # Check shape
-        self.assertTrue(samples.requires_grad) #Check gradient tracking
-
+        self.assertEqual(samples.shape, torch.Size([10, 2]))
+        self.assertTrue(samples.requires_grad)
 
     def test_log_prob(self):
         value = torch.tensor([1.0, 2.0])
@@ -147,108 +211,113 @@ class TestGammaDistribution(unittest.TestCase):
         expected_cdf = torch.special.gammainc(self.concentration, self.rate * value)
         self.assertTrue(torch.allclose(cdf, expected_cdf))
 
-
     def test_invalid_inputs(self):
         with self.assertRaises(ValueError):
-            Gamma(torch.tensor([-1.0, 1.0]), self.rate)  # Negative concentration
+            Gamma(torch.tensor([-1.0, 1.0]), self.rate)
         with self.assertRaises(ValueError):
-            Gamma(self.concentration, torch.tensor([-1.0, 1.0]))  # Negative rate
+            Gamma(self.concentration, torch.tensor([-1.0, 1.0]))
         with self.assertRaises(ValueError):
-            self.gamma.log_prob(torch.tensor([-1.0, 1.0]))  # Negative value
+            self.gamma.log_prob(torch.tensor([-1.0, 1.0]))
+
 
 class TestMixtureSameFamily(unittest.TestCase):
     def setUp(self):
-        # Use simple distributions for testing. Replace with your desired components
-        component_dist = Normal(torch.tensor([0.0, 1.0]).requires_grad_(True), torch.tensor([1.0, 2.0]).requires_grad_(True))
+        component_dist = Normal(
+            torch.tensor([0.0, 1.0]).requires_grad_(True), torch.tensor([1.0, 2.0]).requires_grad_(True)
+        )
         mixture_dist = Categorical(torch.tensor([0.6, 0.4]))
-
         self.mixture = MixtureSameFamily(mixture_dist, component_dist)
 
     def test_rsample_event_size_1(self):
         samples = self.mixture.rsample(sample_shape=torch.Size([10]))
         self.assertEqual(samples.shape, torch.Size([10]))
-        self.assertTrue(samples.requires_grad)  # Ensure gradient tracking
+        self.assertTrue(samples.requires_grad)
 
     def test_rsample_event_size_greater_than_1(self):
-        #Create a mixture with event_size > 1  (e.g., using Independent(Normal(...),1) )
-        component_dist = Independent(Normal(torch.tensor([[0.0, 1.0], [2., 3.]]).requires_grad_(True), torch.tensor([[1.0, 2.0], [2., 3.]]).requires_grad_(True)), 1)
+        component_dist = Independent(
+            Normal(
+                torch.tensor([[0.0, 1.0], [2.0, 3.0]]).requires_grad_(True),
+                torch.tensor([[1.0, 2.0], [2.0, 3.0]]).requires_grad_(True),
+            ),
+            1,
+        )
         mixture_dist = Categorical(torch.tensor([0.6, 0.4]).requires_grad_(True))
         mixture = MixtureSameFamily(mixture_dist, component_dist)
         samples = mixture.rsample(sample_shape=torch.Size([10]))
-        self.assertEqual(samples.shape, torch.Size([10, 2])) # Check shape
-        self.assertTrue(samples.requires_grad)  # Ensure gradient tracking
+        self.assertEqual(samples.shape, torch.Size([10, 2]))
+        self.assertTrue(samples.requires_grad)
 
     def test_distributional_transform(self):
-        # Test cases for different input shapes and component distributions
-        # Add assertions to check the output of _distributional_transform.
-
-        x = torch.randn(10,2)
+        x = torch.randn(10, 2)
         transform = self.mixture._distributional_transform(x)
-        # ADD ASSERTION HERE.  The transform should be a tensor of the correct shape, depending on event shape of component distribution
-        self.assertEqual(transform.shape,torch.Size([10, 2]))
-
+        self.assertEqual(transform.shape, torch.Size([10, 2]))
 
     def test_invalid_component(self):
-        # Test with a component distribution that doesn't have rsample
         class NoRsampleDist(object):
             has_rsample = False
+
         with self.assertRaises(ValueError):
             MixtureSameFamily(Categorical(torch.tensor([0.6, 0.4])), NoRsampleDist())
 
     def test_log_cdf_multivariate(self):
-        # Test with a multivariate component distribution (e.g., Independent(Normal(...),1))
-        component_dist = Independent(Normal(loc=torch.zeros(2, 2), scale=torch.ones(2, 2)),1)
+        component_dist = Independent(Normal(loc=torch.zeros(2, 2), scale=torch.ones(2, 2)), 1)
         mixture_dist = Categorical(torch.tensor([0.6, 0.4]))
         mixture = MixtureSameFamily(mixture_dist, component_dist)
         x = torch.tensor([[0.5, 1.0], [1.0, 0.5]])
         log_cdf = mixture._log_cdf(x)
-        # ADD ASSERTION(S) HERE to check the calculated log_cdf values
-        # self.assertTrue(torch.allclose(log_cdf, torch.tensor([expected_value_1, expected_value_2]), atol=1e-4))
+        self.assertEqual(log_cdf.shape, torch.Size([2, 2]))
+
 
 class TestBetaDistribution(unittest.TestCase):
     def setUp(self):
         self.concentration1 = torch.tensor([1.0, 2.0], requires_grad=True)
         self.concentration0 = torch.tensor([2.0, 1.0], requires_grad=True)
         self.beta = Beta(self.concentration1, self.concentration0)
-        self._dirichlet = Dirichlet(torch.stack([self.concentration1, self.concentration0], -1))  # Initialize _dirichlet
+        self._dirichlet = Dirichlet(torch.stack([self.concentration1, self.concentration0], -1))
 
     def test_init(self):
         beta = Beta(torch.tensor(1.0), torch.tensor(2.0))
         self.assertEqual(beta.concentration1, 1.0)
         self.assertEqual(beta.concentration0, 2.0)
-        self.assertEqual(beta._gamma1.concentration, 1.0) #Check Gamma parameters
+        self.assertEqual(beta._gamma1.concentration, 1.0)
         self.assertEqual(beta._gamma0.concentration, 2.0)
 
-
     def test_properties(self):
-        self.assertTrue(torch.allclose(self.beta.mean, self.concentration1 / (self.concentration1 + self.concentration0)))
-        self.assertTrue(torch.allclose(self.beta.mode, (self.concentration1 - 1) / (self.concentration1 + self.concentration0 - 2)))
+        self.assertTrue(
+            torch.allclose(self.beta.mean, self.concentration1 / (self.concentration1 + self.concentration0))
+        )
+        self.assertTrue(
+            torch.allclose(self.beta.mode, (self.concentration1 - 1) / (self.concentration1 + self.concentration0 - 2))
+        )
         total = self.concentration1 + self.concentration0
-        self.assertTrue(torch.allclose(self.beta.variance, self.concentration1 * self.concentration0 / (total.pow(2) * (total + 1))))
+        self.assertTrue(
+            torch.allclose(self.beta.variance, self.concentration1 * self.concentration0 / (total.pow(2) * (total + 1)))
+        )
 
     def test_expand(self):
         expanded_beta = self.beta.expand(torch.Size([3, 2]))
         self.assertEqual(expanded_beta.batch_shape, torch.Size([3, 2]))
+        self.assertTrue(torch.equal(expanded_beta.concentration1, self.concentration1.expand([3, 2])))
+        self.assertTrue(torch.equal(expanded_beta.concentration0, self.concentration0.expand([3, 2])))
         self.assertTrue(torch.equal(expanded_beta._gamma1.concentration, self.concentration1.expand([3, 2])))
         self.assertTrue(torch.equal(expanded_beta._gamma0.concentration, self.concentration0.expand([3, 2])))
 
     def test_rsample(self):
         samples = self.beta.rsample(sample_shape=torch.Size([10]))
         self.assertEqual(samples.shape, torch.Size([10, 2]))
-        self.assertTrue(samples.requires_grad)  #check grad tracking
+        self.assertTrue(samples.requires_grad)
 
     def test_log_prob(self):
         value = torch.tensor([0.5, 0.7])
         log_prob = self.beta.log_prob(value)
         heads_tails = torch.stack([value, 1.0 - value], -1)
-        expected_log_prob = self._dirichlet.log_prob(heads_tails)  #Use initialized _dirichlet
+        expected_log_prob = self._dirichlet.log_prob(heads_tails)
         self.assertTrue(torch.allclose(log_prob, expected_log_prob))
 
     def test_entropy(self):
         entropy = self.beta.entropy()
-        expected_entropy = self._dirichlet.entropy()  #Use initialized _dirichlet
+        expected_entropy = self._dirichlet.entropy()
         self.assertTrue(torch.allclose(entropy, expected_entropy))
-
 
     def test_natural_params(self):
         natural_params = self.beta._natural_params
@@ -261,16 +330,16 @@ class TestBetaDistribution(unittest.TestCase):
         expected_log_normalizer = torch.lgamma(x) + torch.lgamma(y) - torch.lgamma(x + y)
         self.assertTrue(torch.allclose(log_normalizer, expected_log_normalizer))
 
-
     def test_invalid_inputs(self):
         with self.assertRaises(ValueError):
-            Beta(torch.tensor([-1.0, 1.0]), self.concentration0)  # Negative concentration1
+            Beta(torch.tensor([-1.0, 1.0]), self.concentration0)
         with self.assertRaises(ValueError):
-            Beta(self.concentration1, torch.tensor([-1.0, 1.0]))  # Negative concentration0
+            Beta(self.concentration1, torch.tensor([-1.0, 1.0]))
         with self.assertRaises(ValueError):
-            self.beta.log_prob(torch.tensor([-0.1, 0.5]))  # Value outside [0,1]
+            self.beta.log_prob(torch.tensor([-0.1, 0.5]))
         with self.assertRaises(ValueError):
-            self.beta.log_prob(torch.tensor([1.1, 0.5]))  
+            self.beta.log_prob(torch.tensor([1.1, 0.5]))
+
 
 class TestDirichlet(unittest.TestCase):
     def setUp(self):
@@ -279,7 +348,7 @@ class TestDirichlet(unittest.TestCase):
 
     def test_init(self):
         with self.assertRaises(ValueError):
-            Dirichlet(torch.tensor([]), validate_args=True)  # Not enough dimensions
+            Dirichlet(torch.tensor([]), validate_args=True)
         dirichlet = Dirichlet(self.concentration)
         self.assertTrue(torch.equal(dirichlet.concentration, self.concentration))
         self.assertEqual(dirichlet.batch_shape, torch.Size())
@@ -290,7 +359,6 @@ class TestDirichlet(unittest.TestCase):
         self.assertEqual(expanded_dirichlet.batch_shape, torch.Size([2, 3]))
         self.assertEqual(expanded_dirichlet.event_shape, torch.Size([3]))
         self.assertTrue(torch.equal(expanded_dirichlet.concentration, self.concentration.expand(torch.Size([2, 3, 3]))))
-
 
     def test_log_prob(self):
         value = torch.tensor([0.2, 0.3, 0.5])
@@ -316,11 +384,7 @@ class TestDirichlet(unittest.TestCase):
     def test_variance(self):
         variance = self.dirichlet.variance
         con0 = self.concentration.sum(-1, True)
-        expected_variance = (
-            self.concentration
-            * (con0 - self.concentration)
-            / (con0.pow(2) * (con0 + 1))
-        )
+        expected_variance = self.concentration * (con0 - self.concentration) / (con0.pow(2) * (con0 + 1))
         self.assertTrue(torch.allclose(variance, expected_variance))
 
     def test_entropy(self):
@@ -335,7 +399,6 @@ class TestDirichlet(unittest.TestCase):
         )
         self.assertTrue(torch.allclose(entropy, expected_entropy))
 
-
     def test_natural_params(self):
         natural_params = self.dirichlet._natural_params
         self.assertTrue(torch.equal(natural_params[0], self.concentration))
@@ -347,9 +410,9 @@ class TestDirichlet(unittest.TestCase):
 
     def test_invalid_inputs(self):
         with self.assertRaises(ValueError):
-            Dirichlet(torch.tensor([1.0, -1.0, 3.0])) #Negative Concentration
+            Dirichlet(torch.tensor([1.0, -1.0, 3.0]))
         with self.assertRaises(ValueError):
-            self.dirichlet.log_prob(torch.tensor([0.2, 0.3, 0.6])) #Values don't sum to 1
+            self.dirichlet.log_prob(torch.tensor([0.2, 0.3, 0.6]))
 
 
 class TestStudentT(unittest.TestCase):
@@ -367,21 +430,15 @@ class TestStudentT(unittest.TestCase):
         self.assertEqual(studentt.scale, 0.5)
 
     def test_properties(self):
-        df = torch.tensor([.3, 2.0])
+        df = torch.tensor([0.3, 2.0])
         loc = torch.tensor([1.0, 2.0])
         scale = torch.tensor([0.5, 1.0])
         studentt = StudentT(df, loc, scale)
         self.assertTrue(torch.equal(studentt.mode, studentt.loc))
-        # Check mean (undefined for df <= 1)
-        # print(self.studentt.mean[0])
-        self.assertTrue(torch.isnan(studentt.mean[0])) #Testing for nan values
-        self.assertTrue(torch.allclose(studentt.mean[1], studentt.loc[1])) #Mean should be defined for df > 1
-        
-        # Check variance (undefined for df <= 1, infinite for 1 < df <= 2)
+        self.assertTrue(torch.isnan(studentt.mean[0]))
+        self.assertTrue(torch.allclose(studentt.mean[1], studentt.loc[1]))
         self.assertTrue(torch.isnan(studentt.variance[0]))
-        self.assertTrue(torch.isinf(studentt.variance[1])) # Should be inf for 1 < df <=2
-        self.assertTrue(torch.allclose(studentt.variance[1], (scale[1].pow(2) * df[1] / (df[1] - 2)))) #Should be defined for df > 2
-
+        self.assertTrue(torch.isinf(studentt.variance[1]))
 
     def test_expand(self):
         expanded_studentt = self.studentt.expand(torch.Size([2, 2]))
@@ -389,7 +446,6 @@ class TestStudentT(unittest.TestCase):
         self.assertTrue(torch.equal(expanded_studentt.df, self.df.expand([2, 2])))
         self.assertTrue(torch.equal(expanded_studentt.loc, self.loc.expand([2, 2])))
         self.assertTrue(torch.equal(expanded_studentt.scale, self.scale.expand([2, 2])))
-
 
     def test_log_prob(self):
         value = torch.tensor([2.0, 3.0])
@@ -405,37 +461,295 @@ class TestStudentT(unittest.TestCase):
         expected_log_prob = -0.5 * (self.df + 1.0) * torch.log1p(y**2.0 / self.df) - Z
         self.assertTrue(torch.allclose(log_prob, expected_log_prob))
 
-
     def test_entropy(self):
         entropy = self.studentt.entropy()
-        lbeta = (
-            torch.lgamma(0.5 * self.df)
-            + math.lgamma(0.5)
-            - torch.lgamma(0.5 * (self.df + 1))
-        )
+        lbeta = torch.lgamma(0.5 * self.df) + math.lgamma(0.5) - torch.lgamma(0.5 * (self.df + 1))
         expected_entropy = (
             self.scale.log()
-            + 0.5
-            * (self.df + 1)
-            * (torch.digamma(0.5 * (self.df + 1)) - torch.digamma(0.5 * self.df))
+            + 0.5 * (self.df + 1) * (torch.digamma(0.5 * (self.df + 1)) - torch.digamma(0.5 * self.df))
             + 0.5 * self.df.log()
             + lbeta
         )
         self.assertTrue(torch.allclose(entropy, expected_entropy))
 
-
     def test_rsample(self):
         samples = self.studentt.rsample(sample_shape=torch.Size([10]))
-        print(samples.shape)
-        # print(self.studentt.rsample(sample_shape=torch.Size([2])))
         self.assertEqual(samples.shape, torch.Size([10, 2]))
-        self.assertTrue(samples.requires_grad) # Check that gradients are tracked
+        self.assertTrue(samples.requires_grad)
+
+    def test_rsample_does_not_mutate_state(self):
+        """Verify that rsample does not change loc/scale of the distribution."""
+        loc_before = self.studentt.loc.clone()
+        scale_before = self.studentt.scale.clone()
+        _ = self.studentt.rsample(torch.Size([5]))
+        self.assertTrue(torch.equal(self.studentt.loc, loc_before))
+        self.assertTrue(torch.equal(self.studentt.scale, scale_before))
 
     def test_invalid_inputs(self):
         with self.assertRaises(ValueError):
-            StudentT(torch.tensor([-1.0, 1.0]), self.loc, self.scale)  #Negative df
+            StudentT(torch.tensor([-1.0, 1.0]), self.loc, self.scale)
         with self.assertRaises(ValueError):
             self.studentt.log_prob([1, 2])
+
+
+class TestVonMises(unittest.TestCase):
+    def setUp(self):
+        self.loc = torch.tensor([0.0, 1.0]).requires_grad_(True)
+        self.concentration = torch.tensor([2.0, 5.0]).requires_grad_(True)
+        self.vm = VonMises(self.loc, self.concentration)
+
+    def test_init(self):
+        vm = VonMises(torch.tensor(0.0), torch.tensor(1.0))
+        self.assertEqual(vm.batch_shape, torch.Size())
+
+        vm = VonMises(torch.tensor([0.0, 1.0]), torch.tensor([2.0, 5.0]))
+        self.assertEqual(vm.batch_shape, torch.Size([2]))
+
+    def test_mean(self):
+        self.assertTrue(torch.equal(self.vm.mean, self.loc))
+
+    def test_variance(self):
+        from irt.distributions import _log_modified_bessel_fn
+
+        expected_var = (
+            1
+            - (
+                _log_modified_bessel_fn(self.concentration, order=1)
+                - _log_modified_bessel_fn(self.concentration, order=0)
+            ).exp()
+        )
+        self.assertTrue(torch.allclose(self.vm.variance, expected_var))
+
+    def test_log_prob(self):
+        from irt.distributions import _log_modified_bessel_fn
+
+        value = torch.tensor([0.5, -0.5])
+        log_prob = self.vm.log_prob(value)
+        expected = (
+            self.concentration * torch.cos(value - self.loc)
+            - math.log(2 * math.pi)
+            - _log_modified_bessel_fn(self.concentration, order=0)
+        )
+        self.assertTrue(torch.allclose(log_prob, expected))
+
+    def test_sample_shape(self):
+        samples = self.vm.sample(torch.Size([100]))
+        self.assertEqual(samples.shape, torch.Size([100, 2]))
+
+    def test_sample_range(self):
+        samples = self.vm.sample(torch.Size([1000]))
+        self.assertTrue((samples >= -math.pi).all())
+        self.assertTrue((samples <= math.pi).all())
+
+    def test_rsample_shape(self):
+        samples = self.vm.rsample(torch.Size([10]))
+        self.assertEqual(samples.shape, torch.Size([10, 2]))
+
+    def test_rsample_gradient(self):
+        samples = self.vm.rsample(torch.Size([10]))
+        loss = samples.sum()
+        loss.backward()
+        self.assertIsNotNone(self.loc.grad)
+        self.assertIsNotNone(self.concentration.grad)
+
+
+# ==================== Gradient Verification Tests ====================
+
+
+class TestNormalGradients(unittest.TestCase):
+    """Compare implicit reparameterization gradients with finite differences for Normal."""
+
+    def test_grad_wrt_loc(self):
+        """d/d(loc) E[x] should be 1.0"""
+        loc_val = 2.0
+        scale_val = 1.5
+
+        loc = torch.tensor(loc_val, requires_grad=True)
+        dist = Normal(loc, scale_val)
+        grad_implicit = implicit_reparam_gradient(dist, loc, lambda x: x, num_samples=20000)
+
+        grad_fd = finite_difference_gradient(
+            lambda v: Normal(v, scale_val),
+            torch.tensor(loc_val),
+            lambda x: x,
+            num_samples=20000,
+        )
+        self.assertTrue(
+            abs(grad_implicit.item() - grad_fd.item()) < 0.1,
+            f"loc grad: implicit={grad_implicit.item():.4f}, fd={grad_fd.item():.4f}",
+        )
+
+    def test_grad_wrt_scale(self):
+        """d/d(scale) E[x^2] should be 2*scale (since E[x^2] = loc^2 + scale^2 for loc=0)"""
+        loc_val = 0.0
+        scale_val = 2.0
+
+        scale = torch.tensor(scale_val, requires_grad=True)
+        dist = Normal(loc_val, scale)
+        grad_implicit = implicit_reparam_gradient(dist, scale, lambda x: x**2, num_samples=30000)
+
+        grad_fd = finite_difference_gradient(
+            lambda v: Normal(loc_val, v),
+            torch.tensor(scale_val),
+            lambda x: x**2,
+            num_samples=30000,
+        )
+        self.assertTrue(
+            abs(grad_implicit.item() - grad_fd.item()) < 0.2,
+            f"scale grad: implicit={grad_implicit.item():.4f}, fd={grad_fd.item():.4f}",
+        )
+
+
+class TestGammaGradients(unittest.TestCase):
+    """Compare implicit reparameterization gradients with finite differences for Gamma."""
+
+    def test_grad_wrt_rate(self):
+        """d/d(rate) E[x] = -concentration/rate^2"""
+        conc_val = 3.0
+        rate_val = 2.0
+
+        rate = torch.tensor(rate_val, requires_grad=True)
+        dist = Gamma(conc_val, rate)
+        grad_implicit = implicit_reparam_gradient(dist, rate, lambda x: x, num_samples=30000)
+
+        grad_fd = finite_difference_gradient(
+            lambda v: Gamma(conc_val, v),
+            torch.tensor(rate_val),
+            lambda x: x,
+            num_samples=30000,
+        )
+
+        expected = -conc_val / rate_val**2
+        self.assertTrue(
+            abs(grad_implicit.item() - expected) < 0.15,
+            f"rate grad: implicit={grad_implicit.item():.4f}, expected={expected:.4f}",
+        )
+        self.assertTrue(
+            abs(grad_fd.item() - expected) < 0.15, f"rate grad: fd={grad_fd.item():.4f}, expected={expected:.4f}"
+        )
+
+    def test_grad_wrt_concentration(self):
+        """Paper Appendix A: d/d(alpha) E[z] = 1 for Gamma(alpha, 1)"""
+        for alpha_val in [0.5, 1.0, 5.0]:
+            alpha = torch.tensor(alpha_val, requires_grad=True)
+            dist = Gamma(alpha, 1.0)
+            grad = implicit_reparam_gradient(dist, alpha, lambda x: x, num_samples=50000)
+            self.assertTrue(
+                abs(grad.item() - 1.0) < 0.05,
+                f"Gamma(alpha={alpha_val}, 1): d/dalpha E[z] = {grad.item():.4f}, expected 1.0",
+            )
+
+
+class TestBetaGradients(unittest.TestCase):
+    """Compare implicit reparameterization gradients with finite differences for Beta."""
+
+    def test_grad_wrt_concentration1(self):
+        """d/d(alpha) E[x] for Beta(alpha, beta)"""
+        alpha_val = 3.0
+        beta_val = 2.0
+
+        alpha = torch.tensor(alpha_val, requires_grad=True)
+        dist = Beta(alpha, beta_val)
+        grad_implicit = implicit_reparam_gradient(dist, alpha, lambda x: x, num_samples=30000)
+
+        grad_fd = finite_difference_gradient(
+            lambda v: Beta(v, beta_val),
+            torch.tensor(alpha_val),
+            lambda x: x,
+            num_samples=30000,
+        )
+        self.assertTrue(
+            abs(grad_implicit.item() - grad_fd.item()) < 0.1,
+            f"alpha grad: implicit={grad_implicit.item():.4f}, fd={grad_fd.item():.4f}",
+        )
+
+
+class TestStudentTGradients(unittest.TestCase):
+    """Compare implicit reparameterization gradients with finite differences for StudentT."""
+
+    def test_grad_wrt_loc(self):
+        """d/d(loc) E[x] should be 1.0 for StudentT"""
+        df_val = 5.0
+        loc_val = 1.0
+        scale_val = 1.0
+
+        loc = torch.tensor(loc_val, requires_grad=True)
+        dist = StudentT(df_val, loc, scale_val)
+        grad_implicit = implicit_reparam_gradient(dist, loc, lambda x: x, num_samples=30000)
+
+        grad_fd = finite_difference_gradient(
+            lambda v: StudentT(df_val, v, scale_val),
+            torch.tensor(loc_val),
+            lambda x: x,
+            num_samples=30000,
+        )
+        self.assertTrue(
+            abs(grad_implicit.item() - grad_fd.item()) < 0.15,
+            f"loc grad: implicit={grad_implicit.item():.4f}, fd={grad_fd.item():.4f}",
+        )
+
+    def test_grad_wrt_scale(self):
+        """d/d(scale) E[x^2] for StudentT"""
+        df_val = 10.0
+        loc_val = 0.0
+        scale_val = 2.0
+
+        scale = torch.tensor(scale_val, requires_grad=True)
+        dist = StudentT(df_val, loc_val, scale)
+        grad_implicit = implicit_reparam_gradient(dist, scale, lambda x: x**2, num_samples=30000)
+
+        grad_fd = finite_difference_gradient(
+            lambda v: StudentT(df_val, loc_val, v),
+            torch.tensor(scale_val),
+            lambda x: x**2,
+            num_samples=30000,
+        )
+        self.assertTrue(
+            abs(grad_implicit.item() - grad_fd.item()) < 0.5,
+            f"scale grad: implicit={grad_implicit.item():.4f}, fd={grad_fd.item():.4f}",
+        )
+
+
+class TestVonMisesGradients(unittest.TestCase):
+    """Compare implicit reparameterization gradients with finite differences for VonMises."""
+
+    def test_grad_wrt_loc(self):
+        """d/d(loc) E[cos(x)] for VonMises"""
+        loc_val = 0.5
+        conc_val = 5.0
+
+        loc = torch.tensor(loc_val, requires_grad=True)
+        dist = VonMises(loc, conc_val)
+        grad_implicit = implicit_reparam_gradient(dist, loc, lambda x: torch.cos(x), num_samples=30000)
+
+        grad_fd = finite_difference_gradient(
+            lambda v: VonMises(v, conc_val),
+            torch.tensor(loc_val),
+            lambda x: torch.cos(x),
+            num_samples=30000,
+        )
+        self.assertTrue(
+            abs(grad_implicit.item() - grad_fd.item()) < 0.15,
+            f"loc grad: implicit={grad_implicit.item():.4f}, fd={grad_fd.item():.4f}",
+        )
+
+    def test_grad_wrt_concentration(self):
+        """Paper Appendix A: d/dk E[cos z] = 1 - I1(k)/(k*I0(k)) - (I1(k)/I0(k))^2"""
+        for kappa_val in [1.0, 5.0, 10.0, 20.0, 50.0]:
+            kappa = torch.tensor(kappa_val, requires_grad=True)
+            dist = VonMises(0.0, kappa)
+            grad = implicit_reparam_gradient(dist, kappa, lambda x: torch.cos(x), num_samples=50000)
+
+            k = torch.tensor(kappa_val)
+            i0 = torch.special.i0(k)
+            i1 = torch.special.i1(k)
+            analytical = 1.0 - i1 / (k * i0) - (i1 / i0) ** 2
+
+            self.assertTrue(
+                abs(grad.item() - analytical.item()) < 0.02,
+                f"VonMises(0, k={kappa_val}): d/dk E[cos z] = {grad.item():.6f}, "
+                f"analytical = {analytical.item():.6f}",
+            )
 
 
 if __name__ == "__main__":

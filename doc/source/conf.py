@@ -20,9 +20,9 @@ from irt import __version__
 
 # -- Project information -----------------------------------------------------
 
-project = 'Implicit Reparametrization Trick'
-copyright = '2024, Matvei Kreinin, Maria Nikitina, Petr Babkin, Irina Zaboryanskaya'
-author = 'Matvei Kreinin, Maria Nikitina, Petr Babkin, Irina Zaboryanskaya'
+project = 'Implicit Reparameterization Trick'
+copyright = '2024-2025, Matvei Kreinin, Maria Nikitina, Petr Babkin, Iryna Zabarianska'
+author = 'Matvei Kreinin, Maria Nikitina, Petr Babkin, Iryna Zabarianska'
 
 version = __version__
 master_doc = 'index'
@@ -32,12 +32,17 @@ master_doc = 'index'
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
-extensions = ['sphinx.ext.autodoc', 'sphinx.ext.doctest', 
-              'sphinx.ext.intersphinx', 'sphinx.ext.todo',
-              'sphinx.ext.ifconfig', 'sphinx.ext.viewcode',
-              'sphinx.ext.inheritance_diagram',
-              'sphinx.ext.autosummary', 'sphinx.ext.mathjax',
-              'sphinx_rtd_theme']
+extensions = [
+    'sphinx.ext.autodoc',
+    'sphinx.ext.doctest',
+    'sphinx.ext.intersphinx',
+    'sphinx.ext.todo',
+    'sphinx.ext.ifconfig',
+    'sphinx.ext.viewcode',
+    'sphinx.ext.inheritance_diagram',
+    'sphinx.ext.autosummary',
+    'sphinx.ext.mathjax',
+]
 
 autodoc_mock_imports = ["numpy", "scipy", "sklearn", "torch"]
 
@@ -52,11 +57,11 @@ exclude_patterns = []
 html_extra_path = []
 
 html_context = {
-    "display_github": True, # Integrate GitHub
-    "github_user": "Intelligent-Systems-Phystech", # Username
-    "github_repo": "implicit-reparametrization-trick", # Repo name
-    "github_version": "main", # Version
-    "conf_py_path": "./doc/source/", # Path in the checkout to the docs root
+    "display_github": True,
+    "github_user": "intsystems",
+    "github_repo": "implicit-reparameterization-trick",
+    "github_version": "main",
+    "conf_py_path": "./doc/source/",
 }
 
 

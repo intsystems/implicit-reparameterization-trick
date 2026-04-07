@@ -2,41 +2,33 @@ name: Docs
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [main]
   pull_request:
-    branches: [ "main" ]
-    
+    branches: [main]
+
 jobs:
   build:
     runs-on: ubuntu-latest
-    
-    strategy:
-      matrix:
-        python-version: [3.7]
-        
-    steps:
-      - name: Set up Python
-        uses: actions/setup-python@v1
-        with:
-          python-version: 3.7
 
-      - name: Checkout 🛎️
-        uses: actions/checkout@v2
-        
-      - name: Install Dependencies
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install dependencies
         run: |
-          pip install -U sphinx
-          pip install -U sphinx-rtd-theme
-          ls ./
-          
-      - name: Build Docs
+          pip install -U sphinx sphinx-rtd-theme
+
+      - name: Build docs
         run: |
           sphinx-build -b html ./doc/source/ public
           touch public/.nojekyll
-          
-      - name: Deploy 🚀
-        uses: JamesIves/github-pages-deploy-action@releases/v3
+
+      - name: Deploy
+        if: github.event_name == 'push'
+        uses: JamesIves/github-pages-deploy-action@v4
         with:
-          ACCESS_TOKEN: ${{ secrets.ACCESS_TOKEN }}
-          BRANCH: gh-pages
-          FOLDER: public
+          branch: gh-pages
+          folder: public

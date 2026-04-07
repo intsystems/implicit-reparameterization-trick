@@ -1,21 +1,12 @@
 # mypy: allow-untyped-defs
 import math
 from numbers import Number, Real
-from typing import List, Optional, Tuple
+from typing import Optional, Tuple
 
 import torch
 import torch.nn.functional as F
 from torch.autograd.functional import jacobian
-from torch.distributions import (
-    Bernoulli,
-    Binomial,
-    ContinuousBernoulli,
-    Distribution,
-    Geometric,
-    NegativeBinomial,
-    RelaxedBernoulli,
-    constraints,
-)
+from torch.distributions import Distribution, constraints
 from torch.distributions.exp_family import ExponentialFamily
 from torch.distributions.utils import broadcast_all, lazy_property
 from torch.types import _size
@@ -58,13 +49,15 @@ class Beta(ExponentialFamily):
             concentration0: Second concentration parameter (beta).
             validate_args: If True, validates the distribution's parameters.
         """
-        self.concentration1 = concentration1
-        self.concentration0 = concentration0
-        self._gamma1 = Gamma(self.concentration1, torch.ones_like(concentration1), validate_args=validate_args)
-        self._gamma0 = Gamma(self.concentration0, torch.ones_like(concentration0), validate_args=validate_args)
+        self.concentration1, self.concentration0 = broadcast_all(concentration1, concentration0)
+        self._gamma1 = Gamma(self.concentration1, torch.ones_like(self.concentration1), validate_args=validate_args)
+        self._gamma0 = Gamma(self.concentration0, torch.ones_like(self.concentration0), validate_args=validate_args)
         self._dirichlet = Dirichlet(torch.stack([self.concentration1, self.concentration0], -1))
-
-        super().__init__(self._gamma0._batch_shape, validate_args=validate_args)
+        if isinstance(concentration1, Number) and isinstance(concentration0, Number):
+            batch_shape = torch.Size()
+        else:
+            batch_shape = self.concentration1.size()
+        super().__init__(batch_shape, validate_args=validate_args)
 
     def expand(self, batch_shape: torch.Size, _instance: Optional["Beta"] = None) -> "Beta":
         """
@@ -79,8 +72,11 @@ class Beta(ExponentialFamily):
         """
         new = self._get_checked_instance(Beta, _instance)
         batch_shape = torch.Size(batch_shape)
+        new.concentration1 = self.concentration1.expand(batch_shape)
+        new.concentration0 = self.concentration0.expand(batch_shape)
         new._gamma1 = self._gamma1.expand(batch_shape)
         new._gamma0 = self._gamma0.expand(batch_shape)
+        new._dirichlet = self._dirichlet.expand(batch_shape)
         super(Beta, new).__init__(batch_shape, validate_args=False)
         new._validate_args = self._validate_args
         return new
@@ -310,6 +306,7 @@ class Dirichlet(ExponentialFamily):
         new = self._get_checked_instance(Dirichlet, _instance)
         batch_shape = torch.Size(batch_shape)
         new.concentration = self.concentration.expand(batch_shape + self.event_shape)
+        new.gamma = Gamma(new.concentration, torch.ones_like(new.concentration))
         super(Dirichlet, new).__init__(batch_shape, self.event_shape, validate_args=False)
         new._validate_args = self._validate_args
         return new
@@ -502,16 +499,20 @@ class StudentT(Distribution):
         Returns:
             torch.Tensor: Reparameterized sample, enabling gradient tracking.
         """
-        self.loc = self.loc.expand(self._extended_shape(sample_shape))
-        self.scale = self.scale.expand(self._extended_shape(sample_shape))
-        gamma_samples = Gamma(self.df * 0.5, self.df * 0.5).rsample(sample_shape)
-        normal_samples = Normal(torch.zeros(gamma_samples.shape), torch.ones(gamma_samples.shape)).sample()
-        
-        # Sample from Normal distribution (shape must match after broadcasting)
-        x = self.loc.detach() + self.scale.detach() * normal_samples * torch.rsqrt(gamma_samples)
+        shape = self._extended_shape(sample_shape)
+        loc = self.loc.expand(shape)
+        scale = self.scale.expand(shape)
+        df = self.df.expand(shape)
 
-        transform = self._transform(x.detach())  # Standardize the sample
-        surrogate_x = -transform / self._d_transform_d_z().detach()  # Compute surrogate gradient
+        gamma_samples = Gamma(df * 0.5, df * 0.5).rsample()
+        normal_samples = torch.randn(shape, dtype=loc.dtype, device=loc.device)
+
+        # Sample from the Student-t: loc + scale * Normal / sqrt(Gamma)
+        x = loc.detach() + scale.detach() * normal_samples * torch.rsqrt(gamma_samples)
+
+        # Implicit reparameterization trick
+        transform = (x.detach() - loc) / scale
+        surrogate_x = -transform / (1.0 / scale).detach()
 
         return x + (surrogate_x - surrogate_x.detach())
 
@@ -909,16 +910,6 @@ class MixtureSameFamily(torch.distributions.MixtureSameFamily):
         if not self._component_distribution.has_rsample:
             raise ValueError("Cannot reparameterize a mixture of non-reparameterizable components.")
 
-        # Define a list of discrete distributions for checking in `_log_cdf`
-        self.discrete_distributions: List[Distribution] = [
-            Bernoulli,
-            Binomial,
-            ContinuousBernoulli,
-            Geometric,
-            NegativeBinomial,
-            RelaxedBernoulli,
-        ]
-
     def rsample(self, sample_shape: torch.Size = default_size) -> torch.Tensor:
         """
         Generates a reparameterized sample from the mixture of distributions.
@@ -1028,12 +1019,123 @@ class MixtureSameFamily(torch.distributions.MixtureSameFamily):
         else:
             log_cdf_x = torch.log(univariate_components.cdf(x))
 
-        if isinstance(univariate_components, tuple(self.discrete_distributions)):
-            log_mix_prob = torch.sigmoid(self._mixture_distribution.logits)
-        else:
-            log_mix_prob = F.log_softmax(self._mixture_distribution.logits, dim=-1)
+        log_mix_prob = F.log_softmax(self._mixture_distribution.logits, dim=-1)
 
         return torch.logsumexp(log_cdf_x + log_mix_prob, dim=-1)
+
+
+class ImplicitReparam(Distribution):
+    """
+    Implicit reparameterization wrapper for arbitrary distributions with tractable CDFs.
+
+    Enables reparameterized sampling (rsample) for any distribution that has
+    ``cdf()`` and ``log_prob()`` methods, using the universal standardization
+    function F(z|phi) (Eq. 8 from Figurnov et al., 2019):
+
+        nabla_phi z = - nabla_phi F(z|phi) / q_phi(z)
+
+    For factorized distributions (e.g. ``Independent(base, k)``), the gradient
+    is computed per-dimension independently, since the Jacobian of the
+    multivariate distributional transform is diagonal.
+
+    Args:
+        base_dist: A PyTorch distribution with ``cdf()`` and ``log_prob()`` methods.
+            Can be univariate, batched, or factorized via ``Independent``.
+        validate_args: Whether to validate input arguments.
+
+    Example::
+
+        >>> loc = torch.tensor(0.0, requires_grad=True)
+        >>> base = torch.distributions.Laplace(loc, 1.0)
+        >>> dist = ImplicitReparam(base)
+        >>> z = dist.rsample(torch.Size([100]))   # gradients flow to loc
+    """
+
+    arg_constraints = {}
+    has_rsample = True
+
+    def __init__(self, base_dist: Distribution, validate_args: Optional[bool] = None) -> None:
+        # Unwrap Independent to access per-element cdf/log_prob
+        if isinstance(base_dist, torch.distributions.Independent):
+            self._univariate = base_dist.base_dist
+            self._reinterpreted_batch_ndims = base_dist.reinterpreted_batch_ndims
+        else:
+            self._univariate = base_dist
+            self._reinterpreted_batch_ndims = 0
+
+        if not callable(getattr(self._univariate, "cdf", None)):
+            raise ValueError(
+                "base_dist must have a cdf() method for implicit reparameterization. "
+                f"Got {type(base_dist).__name__}."
+            )
+
+        self.base_dist = base_dist
+        super().__init__(base_dist.batch_shape, base_dist.event_shape, validate_args=False)
+
+    def expand(self, batch_shape: torch.Size, _instance: Optional["ImplicitReparam"] = None) -> "ImplicitReparam":
+        new = self._get_checked_instance(ImplicitReparam, _instance)
+        new.base_dist = self.base_dist.expand(batch_shape)
+        if isinstance(new.base_dist, torch.distributions.Independent):
+            new._univariate = new.base_dist.base_dist
+            new._reinterpreted_batch_ndims = new.base_dist.reinterpreted_batch_ndims
+        else:
+            new._univariate = new.base_dist
+            new._reinterpreted_batch_ndims = 0
+        super(ImplicitReparam, new).__init__(batch_shape, self.event_shape, validate_args=False)
+        new._validate_args = self._validate_args
+        return new
+
+    @property
+    def mean(self) -> torch.Tensor:
+        return self.base_dist.mean
+
+    @property
+    def variance(self) -> torch.Tensor:
+        return self.base_dist.variance
+
+    @property
+    def support(self):
+        return self.base_dist.support
+
+    @property
+    def arg_constraints(self):
+        return self.base_dist.arg_constraints
+
+    def sample(self, sample_shape: _size = torch.Size()) -> torch.Tensor:
+        return self.base_dist.sample(sample_shape)
+
+    def log_prob(self, value: torch.Tensor) -> torch.Tensor:
+        return self.base_dist.log_prob(value)
+
+    def cdf(self, value: torch.Tensor) -> torch.Tensor:
+        return self._univariate.cdf(value)
+
+    def entropy(self) -> torch.Tensor:
+        return self.base_dist.entropy()
+
+    def rsample(self, sample_shape: _size = torch.Size()) -> torch.Tensor:
+        """
+        Generate reparameterized samples using implicit differentiation of the CDF.
+
+        Forward pass: sample z ~ q_phi(z).
+        Backward pass: gradients computed via Eq. (8)/(11):
+            nabla_phi z_d = -exp(-log q_d(z_d)) * nabla_phi F_d(z_d|phi)
+        """
+        # 1. Draw a sample (detached from parameters)
+        with torch.no_grad():
+            z = self.base_dist.sample(sample_shape)
+
+        # 2. Per-element CDF (differentiable w.r.t. distribution parameters)
+        cdf_z = self._univariate.cdf(z)
+
+        # 3. Per-element log probability (detached — used as a constant in Eq. 8 denominator)
+        log_prob_z = self._univariate.log_prob(z).detach()
+
+        # 4. Surrogate: -F(z|phi) * exp(-log q(z))  [Eq. 11, numerically stable form]
+        surrogate_z = -cdf_z * torch.exp(-log_prob_z)
+
+        # 5. Stop-gradient trick: forward value unchanged, gradients flow through surrogate
+        return z + (surrogate_z - surrogate_z.detach())
 
 
 def _eval_poly(y: torch.Tensor, coef: torch.Tensor) -> torch.Tensor:
@@ -1240,8 +1342,8 @@ class VonMises(Distribution):
     def rsample(self, sample_shape: _size = default_size) -> torch.Tensor:
         """Generate reparameterized samples from the distribution"""
         shape = self._extended_shape(sample_shape)
-        samples = _VonMisesSampler.apply(self.concentration, self._proposal_r, shape)
-        samples = samples + self.loc
+        samples = _VonMisesSampler.apply(self._concentration, self._proposal_r, shape)
+        samples = samples.to(self.loc.dtype) + self.loc
 
         # Map the samples to [-pi, pi].
         return samples - 2.0 * torch.pi * torch.round(samples / (2.0 * torch.pi))
@@ -1351,18 +1453,14 @@ class _VonMisesSampler(torch.autograd.Function):
         num_periods = torch.round(samples / (2.0 * torch.pi))
         x_mapped = samples - (2.0 * torch.pi) * num_periods
 
-        # Parameters from the paper
-        ck = 10.5
-        num_terms = 20
+        # Use series approximation for CDF gradient (numerically stable for all kappa).
+        # Scale number of terms with concentration for convergence at large kappa.
+        num_terms = 20 + int(concentration.max().item() * 0.5) if concentration.numel() > 0 else 20
+        num_terms = min(num_terms, 500)
 
-        # Compute series and normal approximation
-        cdf_series, dcdf_dconcentration_series = von_mises_cdf_series(x_mapped, concentration, num_terms)
-        cdf_normal, dcdf_dconcentration_normal = von_mises_cdf_normal(x_mapped, concentration)
-        use_series = concentration < ck
-        # cdf = torch.where(use_series, cdf_series, cdf_normal) + num_periods
-        dcdf_dconcentration = torch.where(use_series, dcdf_dconcentration_series, dcdf_dconcentration_normal)
+        _, dcdf_dconcentration = von_mises_cdf_series(x_mapped, concentration, num_terms)
 
-        # Compute CDF gradient terms
+        # Eq. (8) from the paper: grad_z = -dF/dk / q(z)
         inv_prob = torch.exp(concentration * cosxm1(samples)) / (2 * math.pi * torch.special.i0e(concentration))
         grad_concentration = grad_output * (-dcdf_dconcentration / inv_prob)
 
@@ -1431,7 +1529,7 @@ def cdf_func(concentration: torch.Tensor, x: torch.Tensor) -> torch.Tensor:
     c = 24.0 * concentration
     c1 = 56.0
 
-    xi = z - z3 / (((c - 2.0 * z2 - 16.0) / 3.0) - (z4 + (7.0 / 4.0) * z2 + 167.0 / 2.0) / (c - c1 - z2 + 3.0)) ** 2
+    xi = z - z3 / ((c - 2.0 * z2 - 16.0) / 3.0 - (z4 + (7.0 / 4.0) * z2 + 167.0 / 2.0) / (c - c1 - z2 + 3.0))
 
     # Use the standard normal distribution for the approximation
     distrib = torch.distributions.Normal(

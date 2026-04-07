@@ -1,80 +1,113 @@
-<div align="center">  
-    <h1> Implicit Reparametrization Trick </h1>
+<div align="center">
+    <h1>Implicit Reparameterization Trick</h1>
+    <p>
+        A PyTorch library for implicit reparameterization gradients
+    </p>
 </div>
 
-<div align="center">  
-    <img src="images/implicit.webp" width="500px" />
+<div align="center">
+    <img src="images/banner.svg" width="480px" />
 </div>
 
 <p align="center">
-    <a href="">
-        <img alt="Coverage_2" src="https://github.com/intsystems/implicit-reparameterization-trick/actions/workflows/testing.yml/badge.svg" />
+    <a href="https://github.com/intsystems/implicit-reparameterization-trick/actions/workflows/testing.yml">
+        <img src="https://github.com/intsystems/implicit-reparameterization-trick/actions/workflows/testing.yml/badge.svg" />
     </a>
-    <a href="">
-        <img alt="Docs" src="https://github.com/intsystems/implicit-reparameterization-trick/actions/workflows/docs.yml/badge.svg" />
+    <a href="https://github.com/intsystems/implicit-reparameterization-trick/actions/workflows/docs.yml">
+        <img src="https://github.com/intsystems/implicit-reparameterization-trick/actions/workflows/docs.yml/badge.svg" />
+    </a>
+    <a href="https://pytorch.org/">
+        <img src="https://img.shields.io/badge/PyTorch-%3E%3D2.1-EE4C2C?logo=pytorch&logoColor=white" />
+    </a>
+    <a href="https://opensource.org/licenses/MIT">
+        <img src="https://img.shields.io/badge/License-MIT-blue.svg" />
     </a>
 </p>
 
-<table>
-    <tr>
-        <td align="left"> <b> Title </b> </td>
-        <td> Implicit Reparametrization Trick for BMM </td>
-    </tr>
-    <tr>
-        <td align="left"> <b> Authors </b> </td>
-        <td> Matvei Kreinin, Maria Nikitina, Petr Babkin, Iryna Zabarianska </td>
-    </tr>
-    <tr>
-        <td align="left"> <b> Consultant </b> </td>
-        <td> Oleg Bakhteev, PhD </td>
-    </tr>
-</table>
+---
 
-## 💡 Description
+| | |
+|---|---|
+| **Authors** | Matvei Kreinin, Maria Nikitina, Petr Babkin, Iryna Zabarianska |
+| **Consultant** | Oleg Bakhteev, PhD |
+| **Paper** | [Figurnov et al., *Implicit Reparameterization Gradients*, NeurIPS 2018](https://arxiv.org/abs/1805.08498) |
 
-This repository implements an educational project for the Bayesian Multimodeling course. It implements algorithms for sampling from various distributions, using the implicit reparameterization trick.
+## Overview
 
-## 🗃 Scope
-We plan to implement the following distributions in our library:
-- [x] Gaussian normal distribution (*)
-- [x] Dirichlet distribution (Beta distributions)(\*)
-- [x] Mixture of the same family distributions (**)
-- [x] Student's t-distribution (**) (\*)
-- [x] VonMises distribution (***)
-- [ ] Sampling from an arbitrary factorized distribution (***)
+This library implements implicit reparameterization gradients for continuous distributions
+that lack tractable inverse CDFs. It provides drop-in replacements for `torch.distributions`
+classes with full support for reparameterized sampling (`rsample`), enabling
+gradient-based optimization through stochastic nodes.
 
-(\*) - this distribution is already implemented in torch using the explicit reparameterization trick, we will implement it for comparison
+The key idea from the paper: instead of inverting the CDF explicitly,
+compute reparameterization gradients via implicit differentiation:
 
-(\*\*) - this distribution is added as a backup, their inclusion is questionable
+$$\nabla_\phi z = -\frac{\nabla_\phi F(z \mid \phi)}{q_\phi(z)}$$
 
-(\*\*\*) - this distribution is not very clear in implementation, its inclusion is questionable
+## Implemented Distributions
 
-## 📚 Stack
+| Distribution | Parameters | Method |
+|---|---|---|
+| `Normal` | loc, scale | Implicit standardization |
+| `Gamma` | concentration, rate | Implicit CDF + scaling |
+| `Beta` | concentration1, concentration0 | Via Gamma ratio |
+| `Dirichlet` | concentration | Via Gamma normalization |
+| `StudentT` | df, loc, scale | Via Gamma-Normal mixture |
+| `VonMises` | loc, concentration | CDF series / normal approx. |
+| `MixtureSameFamily` | mixture, components | Distributional transform |
+| `ImplicitReparam` | any base distribution | Universal CDF wrapper (Eq. 8) |
 
-We plan to inherit from the torch.distribution.Distribution class, so we need to implement all the methods that are present in that class.
+## Installation
 
-## 👨‍💻 Usage
-In this example, we demonstrate the application of our library using a Variational Autoencoder (VAE) model, where the latent layer is modified by a normal distribution.
-```
->>> import torch.distributions.implicit as irt
->>> params = Encoder(inputs)
->>> gauss = irt.Normal(*params)
->>> deviated = gauss.rsample()
->>> outputs = Decoder(deviated)
-```
-In this example, we demonstrate the use of a mixture of distributions using our library.
-```
->>> import irt
->>> params = Encoder(inputs)
->>> mix = irt.Mixture([irt.Normal(*params), irt.Dirichlet(*params)])
->>> deviated = mix.rsample()
->>> outputs = Decoder(deviated)
+```bash
+git clone https://github.com/intsystems/implicit-reparameterization-trick.git
+cd implicit-reparameterization-trick
+pip install src/
 ```
 
-## 📬 Links
-- [LinkReview](https://github.com/intsystems/implitic-reparametrization-trick/blob/main/linkreview.md)
-- [Plan of project](https://github.com/intsystems/implitic-reparametrization-trick/blob/main/planning.md)
-- [BlogPost](blogpost/Blog_post_sketch.pdf)
+## Quick Start
+
+```python
+from irt.distributions import Beta, ImplicitReparam
+
+# Reparameterized sampling from Beta distribution
+alpha = torch.tensor([2.0], requires_grad=True)
+beta = torch.tensor([5.0], requires_grad=True)
+dist = Beta(alpha, beta)
+z = dist.rsample(torch.Size([64]))  # gradients flow to alpha and beta
+
+# Wrap any distribution with a tractable CDF
+loc = torch.tensor(0.0, requires_grad=True)
+dist = ImplicitReparam(torch.distributions.Laplace(loc, 1.0))
+z = dist.rsample(torch.Size([64]))  # gradients flow to loc
+```
+
+## Experiments
+
+VAE trained on dynamically binarized MNIST following the setup in Table 4 of the paper.
+Architecture: FC encoder (784-256-128) and decoder (128-256-784), 30 epochs, Adam optimizer.
+Full reproduction in [`code/vae_demo.ipynb`](code/vae_demo.ipynb).
+
+### Test Negative ELBO
+
+<div align="center">
+    <img src="images/results_table.png" />
+</div>
+
+### 2D Latent Spaces
+
+<div align="center">
+    <img src="images/latent_spaces.png" />
+</div>
+
+### Generated Samples (D=2)
+
+<div align="center">
+    <img src="images/generated_samples.png" />
+</div>
+
+## References
+
+- M. Figurnov, S. Mohamed, A. Mnih. [Implicit Reparameterization Gradients](https://arxiv.org/abs/1805.08498). NeurIPS 2018.
 - [Documentation](https://intsystems.github.io/implicit-reparameterization-trick/)
-- [Matvei Kreinin](https://github.com/kreininmv), [Maria Nikitina](https://github.com/NikitinaMaria), [Petr Babkin](https://github.com/petr-parker), [Iryna Zabarianska](https://github.com/Akshiira)
-
+- [Blog Post](blogpost/Blog_post_sketch.pdf)

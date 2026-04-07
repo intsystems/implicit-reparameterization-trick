@@ -1,64 +1,50 @@
-Implicit Reparametrization Trick
-==========
+Implicit Reparameterization Trick
+=================================
 
-|test| |codecov| |docs|
+|test| |docs| |pytorch| |license|
 
-.. |test| image:: https://github.com/intsystems/ProjectTemplate/workflows/test/badge.svg
-    :target: https://github.com/intsystems/ProjectTemplate/tree/master
-    :alt: Test status
-    
-.. |codecov| image:: https://img.shields.io/codecov/c/github/intsystems/ProjectTemplate/master
-    :target: https://app.codecov.io/gh/intsystems/ProjectTemplate
-    :alt: Test coverage
-    
-.. |docs| image:: https://github.com/intsystems/ProjectTemplate/workflows/docs/badge.svg
+.. |test| image:: https://github.com/intsystems/implicit-reparameterization-trick/actions/workflows/testing.yml/badge.svg
+    :target: https://github.com/intsystems/implicit-reparameterization-trick/actions/workflows/testing.yml
+
+.. |docs| image:: https://github.com/intsystems/implicit-reparameterization-trick/actions/workflows/docs.yml/badge.svg
     :target: https://intsystems.github.io/implicit-reparameterization-trick/
-    :alt: Docs status
 
-Description
-==========
+.. |pytorch| image:: https://img.shields.io/badge/PyTorch-%3E%3D2.1-EE4C2C?logo=pytorch&logoColor=white
+    :target: https://pytorch.org/
 
-This repository implements an educational project for the Bayesian Multimodeling course. It implements algorithms for sampling from various distributions, using the implicit reparameterization trick.
+.. |license| image:: https://img.shields.io/badge/License-MIT-blue.svg
+    :target: https://opensource.org/licenses/MIT
 
-Scope
-==========
+A PyTorch library implementing implicit reparameterization gradients for continuous
+distributions that lack tractable inverse CDFs, based on
+`Figurnov et al. (NeurIPS 2018) <https://arxiv.org/abs/1805.08498>`_.
 
-We plan to implement the following distributions in our library:
+Implemented distributions: Normal, Gamma, Beta, Dirichlet, StudentT, VonMises,
+MixtureSameFamily, ImplicitReparam (universal CDF wrapper).
 
-- `Gaussian normal distribution`
-- `Dirichlet distribution (Beta distributions)`
-- `Sampling from a mixture of distributions`
-- `Sampling from the Student's t-distribution`
-- `Sampling from an arbitrary factorized distribution`
+Installation
+------------
 
-Stack
-==========
+.. code-block:: bash
 
-We plan to inherit from the torch.distribution.Distribution class, so we need to implement all the methods that are present in that class.
+    git clone https://github.com/intsystems/implicit-reparameterization-trick.git
+    cd implicit-reparameterization-trick
+    pip install src/
 
-Usage
-==========
+Quick Start
+-----------
 
-In this example, we demonstrate the application of our library using a Variational Autoencoder (VAE) model, where the latent layer is modified by a normal distribution.::
+::
 
-    import torch.distributions.implicit as irt
-    params = Encoder(inputs)
-    gauss = irt.Normal(*params)
-    deviated = gauss.rsample()
-    outputs = Decoder(deviated)
+    from irt.distributions import Beta, ImplicitReparam
 
-In this example, we demonstrate the use of a mixture of distributions using our library.::
+    alpha = torch.tensor([2.0], requires_grad=True)
+    beta = torch.tensor([5.0], requires_grad=True)
+    dist = Beta(alpha, beta)
+    z = dist.rsample(torch.Size([64]))
 
-    import irt
-    params = Encoder(inputs)
-    mix = irt.Mixture([irt.Normal(*params), irt.Dirichlet(*params)])
-    deviated = mix.rsample()
-    outputs = Decoder(deviated)
+References
+----------
 
-Links
-==========
-
-- `LinkReview <https://github.com/intsystems/implitic-reparametrization-trick/blob/main/linkreview.md>`_
-- `Plan of project <https://github.com/intsystems/implitic-reparametrization-trick/blob/main/planning.md>`_
-- `BlogPost <Blog_post_sketch.pdf>`_
+- `Paper <https://arxiv.org/abs/1805.08498>`_
 - `Documentation <https://intsystems.github.io/implicit-reparameterization-trick/>`_
