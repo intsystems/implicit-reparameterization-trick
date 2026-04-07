@@ -15,7 +15,11 @@ import sys
 
 sys.path.insert(0, os.path.abspath('../../src/'))
 
-from irt import __version__
+# Read version without importing (avoids torch dependency at doc build time)
+import re
+
+with open(os.path.join(os.path.abspath('../../src/irt'), '__init__.py')) as f:
+    __version__ = re.search(r'__version__\s*=\s*["\']([^"\']+)', f.read()).group(1)
 
 
 # -- Project information -----------------------------------------------------

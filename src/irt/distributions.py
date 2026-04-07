@@ -1051,7 +1051,6 @@ class ImplicitReparam(Distribution):
         >>> z = dist.rsample(torch.Size([100]))   # gradients flow to loc
     """
 
-    arg_constraints = {}
     has_rsample = True
 
     def __init__(self, base_dist: Distribution, validate_args: Optional[bool] = None) -> None:
