@@ -103,12 +103,38 @@ pip<span class="w"> </span>install<span class="w"> </span>src/
 </section>
 <section id="quick-start">
 <h2>Quick Start<a class="headerlink" href="#quick-start" title="Link to this heading"></a></h2>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">irt.distributions</span><span class="w"> </span><span class="kn">import</span> <span class="n">Beta</span><span class="p">,</span> <span class="n">ImplicitReparam</span>
+<p>Reparameterized sampling from a Beta distribution:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">irt.distributions</span><span class="w"> </span><span class="kn">import</span> <span class="n">Beta</span>
 
 <span class="n">alpha</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="mf">2.0</span><span class="p">],</span> <span class="n">requires_grad</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 <span class="n">beta</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="mf">5.0</span><span class="p">],</span> <span class="n">requires_grad</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 <span class="n">dist</span> <span class="o">=</span> <span class="n">Beta</span><span class="p">(</span><span class="n">alpha</span><span class="p">,</span> <span class="n">beta</span><span class="p">)</span>
 <span class="n">z</span> <span class="o">=</span> <span class="n">dist</span><span class="o">.</span><span class="n">rsample</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">Size</span><span class="p">([</span><span class="mi">64</span><span class="p">]))</span>
+</pre></div>
+</div>
+<p>Wrapping any distribution with a tractable CDF:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">irt.distributions</span><span class="w"> </span><span class="kn">import</span> <span class="n">ImplicitReparam</span>
+
+<span class="n">loc</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">requires_grad</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">base</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">distributions</span><span class="o">.</span><span class="n">Laplace</span><span class="p">(</span><span class="n">loc</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span>
+<span class="n">dist</span> <span class="o">=</span> <span class="n">ImplicitReparam</span><span class="p">(</span><span class="n">base</span><span class="p">)</span>
+<span class="n">z</span> <span class="o">=</span> <span class="n">dist</span><span class="o">.</span><span class="n">rsample</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">Size</span><span class="p">([</span><span class="mi">64</span><span class="p">]))</span>
+</pre></div>
+</div>
+<p>Mixture of distributions:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">torch.distributions</span><span class="w"> </span><span class="kn">import</span> <span class="n">Categorical</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">irt.distributions</span><span class="w"> </span><span class="kn">import</span> <span class="n">Normal</span><span class="p">,</span> <span class="n">MixtureSameFamily</span>
+
+<span class="n">mix_weights</span> <span class="o">=</span> <span class="n">Categorical</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="mf">0.3</span><span class="p">,</span> <span class="mf">0.7</span><span class="p">]))</span>
+<span class="n">components</span> <span class="o">=</span> <span class="n">Normal</span><span class="p">(</span>
+    <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="o">-</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">],</span> <span class="n">requires_grad</span><span class="o">=</span><span class="kc">True</span><span class="p">),</span>
+    <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">]),</span>
+<span class="p">)</span>
+<span class="n">mixture</span> <span class="o">=</span> <span class="n">MixtureSameFamily</span><span class="p">(</span><span class="n">mix_weights</span><span class="p">,</span> <span class="n">components</span><span class="p">)</span>
+<span class="n">z</span> <span class="o">=</span> <span class="n">mixture</span><span class="o">.</span><span class="n">rsample</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">Size</span><span class="p">([</span><span class="mi">64</span><span class="p">]))</span>
 </pre></div>
 </div>
 </section>
