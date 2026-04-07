@@ -67,28 +67,56 @@ pip install src/
 
 ## Quick Start
 
-```python
-from irt.distributions import Beta, ImplicitReparam
+Reparameterized sampling from a Beta distribution:
 
-# Reparameterized sampling from Beta distribution
+```python
+import torch
+from irt.distributions import Beta
+
 alpha = torch.tensor([2.0], requires_grad=True)
 beta = torch.tensor([5.0], requires_grad=True)
 dist = Beta(alpha, beta)
 z = dist.rsample(torch.Size([64]))  # gradients flow to alpha and beta
+```
 
-# Wrap any distribution with a tractable CDF
+Wrapping any distribution with a tractable CDF via `ImplicitReparam`:
+
+```python
+import torch
+from irt.distributions import ImplicitReparam
+
 loc = torch.tensor(0.0, requires_grad=True)
-dist = ImplicitReparam(torch.distributions.Laplace(loc, 1.0))
+base = torch.distributions.Laplace(loc, 1.0)
+dist = ImplicitReparam(base)
 z = dist.rsample(torch.Size([64]))  # gradients flow to loc
+```
+
+Mixture of distributions:
+
+```python
+import torch
+from torch.distributions import Categorical
+from irt.distributions import Normal, MixtureSameFamily
+
+mix_weights = Categorical(torch.tensor([0.3, 0.7]))
+components = Normal(
+    torch.tensor([-1.0, 1.0], requires_grad=True),
+    torch.tensor([0.5, 0.5]),
+)
+mixture = MixtureSameFamily(mix_weights, components)
+z = mixture.rsample(torch.Size([64]))
 ```
 
 ## Experiments
 
 VAE trained on dynamically binarized MNIST following the setup in Table 4 of the paper.
-Architecture: FC encoder (784-256-128) and decoder (128-256-784), 30 epochs, Adam optimizer.
+Architecture: FC encoder (784-256-128) and decoder (128-256-784), 30 epochs, Adam optimizer
+with KL annealing. Results are averaged over 3 random seeds.
 Full reproduction in [`code/vae_demo.ipynb`](code/vae_demo.ipynb).
 
 ### Test Negative ELBO
+
+Lower is better. Each cell shows mean and standard deviation over 3 runs.
 
 <div align="center">
     <img src="images/results_table.png" />
@@ -96,11 +124,16 @@ Full reproduction in [`code/vae_demo.ipynb`](code/vae_demo.ipynb).
 
 ### 2D Latent Spaces
 
+Encodings of the MNIST test set in 2D latent space, colored by digit class.
+Each panel corresponds to a different posterior distribution family.
+
 <div align="center">
     <img src="images/latent_spaces.png" />
 </div>
 
 ### Generated Samples (D=2)
+
+Samples drawn from the prior of each D=2 model and decoded into images.
 
 <div align="center">
     <img src="images/generated_samples.png" />
