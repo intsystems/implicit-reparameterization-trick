@@ -5,10 +5,6 @@
     </p>
 </div>
 
-<div align="center">
-    <img src="images/banner.svg" width="480px" />
-</div>
-
 <p align="center">
     <a href="https://github.com/intsystems/implicit-reparameterization-trick/actions/workflows/testing.yml">
         <img src="https://github.com/intsystems/implicit-reparameterization-trick/actions/workflows/testing.yml/badge.svg" />
